@@ -8,6 +8,13 @@
       "when": 1788477715817,
       "tag": "0000_portal_coaches_base",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788477873088,
+      "tag": "0001_restringir_ejecucion_tiene_rol",
+      "breakpoints": true
     }
   ]
 }
