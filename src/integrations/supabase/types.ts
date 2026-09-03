@@ -14,13 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      auditoria: {
+        Row: {
+          accion: string
+          actor_id: string | null
+          creado: string
+          detalle: Json
+          id: string
+        }
+        Insert: {
+          accion: string
+          actor_id?: string | null
+          creado?: string
+          detalle?: Json
+          id?: string
+        }
+        Update: {
+          accion?: string
+          actor_id?: string | null
+          creado?: string
+          detalle?: Json
+          id?: string
+        }
+        Relationships: []
+      }
+      coaches: {
+        Row: {
+          activo: boolean
+          auth_user_id: string | null
+          coach_id: number
+          coordinador: string | null
+          creado: string
+          email: string
+          id: string
+          nombre: string
+          rol: string
+          tenure: string | null
+        }
+        Insert: {
+          activo?: boolean
+          auth_user_id?: string | null
+          coach_id: number
+          coordinador?: string | null
+          creado?: string
+          email: string
+          id?: string
+          nombre: string
+          rol?: string
+          tenure?: string | null
+        }
+        Update: {
+          activo?: boolean
+          auth_user_id?: string | null
+          coach_id?: number
+          coordinador?: string | null
+          creado?: string
+          email?: string
+          id?: string
+          nombre?: string
+          rol?: string
+          tenure?: string | null
+        }
+        Relationships: []
+      }
+      encuestas: {
+        Row: {
+          coach_id: number
+          comentario: string | null
+          creado: string
+          curso: string | null
+          id: string
+          origen: string | null
+          periodo: string
+          primera_semana: boolean
+          score: number
+        }
+        Insert: {
+          coach_id: number
+          comentario?: string | null
+          creado?: string
+          curso?: string | null
+          id?: string
+          origen?: string | null
+          periodo: string
+          primera_semana?: boolean
+          score: number
+        }
+        Update: {
+          coach_id?: number
+          comentario?: string | null
+          creado?: string
+          curso?: string | null
+          id?: string
+          origen?: string | null
+          periodo?: string
+          primera_semana?: boolean
+          score?: number
+        }
+        Relationships: []
+      }
+      otp_intentos: {
+        Row: {
+          creado: string
+          email: string
+          id: string
+        }
+        Insert: {
+          creado?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          creado?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      parametros: {
+        Row: {
+          id: boolean
+          min_encuestas: number
+          trimestre_activo: string | null
+          umbral_great: number
+          umbral_superstar: number
+        }
+        Insert: {
+          id?: boolean
+          min_encuestas?: number
+          trimestre_activo?: string | null
+          umbral_great?: number
+          umbral_superstar?: number
+        }
+        Update: {
+          id?: boolean
+          min_encuestas?: number
+          trimestre_activo?: string | null
+          umbral_great?: number
+          umbral_superstar?: number
+        }
+        Relationships: []
+      }
+      revisiones: {
+        Row: {
+          actualizado: string
+          cuenta: boolean
+          encuesta_id: string
+          motivo: string | null
+          revisor_id: string | null
+        }
+        Insert: {
+          actualizado?: string
+          cuenta?: boolean
+          encuesta_id: string
+          motivo?: string | null
+          revisor_id?: string | null
+        }
+        Update: {
+          actualizado?: string
+          cuenta?: boolean
+          encuesta_id?: string
+          motivo?: string | null
+          revisor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revisiones_encuesta_id_fkey"
+            columns: ["encuesta_id"]
+            isOneToOne: true
+            referencedRelation: "encuestas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revisiones_revisor_id_fkey"
+            columns: ["revisor_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      tiene_rol: { Args: { _roles: string[] }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
