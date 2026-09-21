@@ -121,7 +121,7 @@ function PerformanceDashboard() {
                   etiqueta: `${c.nombre} (${c.coach_id})`,
                 }))}
                 valor={coachId === null ? "" : String(coachId)}
-                alCambiar={(v) => setCoachId(v ? Number(v) : null)}
+                alElegir={(v) => setCoachId(v ? Number(v) : null)}
                 marcador="Elegir coach"
               />
             </div>
