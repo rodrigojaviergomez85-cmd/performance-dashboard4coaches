@@ -120,29 +120,33 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       inicioMes - 3 < 1 ? mesInicio(data.year - 1, inicioMes + 9) : mesInicio(data.year, inicioMes - 3);
 
     // DSAT del año completo: sirve para el trimestre y para la vista anual.
-    const dsat = await todasLasFilas<{ period_month: string; status: string; coach_score: number | null }>(
+    const dsat = await todasLasFilas<{
+      period_month: string;
+      aplica_coach: string | null;
+      coach_score: number | null;
+    }>(
       () =>
         supabaseAdmin
-          .from("dsat_evals")
-          .select("period_month, status, coach_score")
+          .from("csat_respuestas")
+          .select("period_month, aplica_coach, coach_score")
           .eq("teacher_id", coachId)
           .gte("period_month", mesInicio(data.year, 1))
           .lt("period_month", mesInicio(data.year + 1, 1)),
     );
 
-    const qa = await todasLasFilas<{ clase_date: string; score: number | null }>(() =>
+    const qa = await todasLasFilas<{ fecha_monitoreo: string; nota_final: number | null }>(() =>
       supabaseAdmin
-        .from("qa_evals")
-        .select("clase_date, score")
+        .from("qa_evaluaciones")
+        .select("fecha_monitoreo, nota_final")
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("clase_date", mesInicio(data.year, 1))
-        .lt("clase_date", mesInicio(data.year + 1, 1)),
+        .gte("fecha_monitoreo", mesInicio(data.year, 1))
+        .lt("fecha_monitoreo", mesInicio(data.year + 1, 1)),
     );
 
     const abs = await todasLasFilas<{ fecha: string }>(() =>
       supabaseAdmin
-        .from("abs_incidencias")
+        .from("incidencias")
         .select("fecha")
         .eq("coach_id", coachId)
         .eq("applicable", 1)
@@ -171,8 +175,11 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const mesDe = (f: string | null) => (f ? Number(f.slice(5, 7)) : 0);
     const enRango = (f: string | null) => !!f && f >= inicio && f < finReal;
 
+    // Cuenta la fila cuando "Aplica o no Coach" viene en blanco.
+    const cuenta = (d: { aplica_coach: string | null }) => !d.aplica_coach;
+
     const dsatDeMes = (mes: number) => {
-      const filas = dsat.filter((d) => mesDe(d.period_month) === mes && d.status === "Te Cuenta");
+      const filas = dsat.filter((d) => mesDe(d.period_month) === mes && cuenta(d));
       const denominador = filas.length;
       const numerador = filas.filter((d) => (d.coach_score ?? 99) <= 8).length;
       return {
@@ -193,9 +200,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       };
     });
 
-    const filasTrimestre = dsat.filter(
-      (d) => enRango(d.period_month) && d.status === "Te Cuenta",
-    );
+    const filasTrimestre = dsat.filter((d) => enRango(d.period_month) && cuenta(d));
     const denomTrimestre = filasTrimestre.length;
     const numTrimestre = filasTrimestre.filter((d) => (d.coach_score ?? 99) <= 8).length;
     const porcentajeTrimestre =
@@ -205,7 +210,9 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       valores.length === 0 ? null : valores.reduce((a, b) => a + b, 0) / valores.length;
 
     const qaTrimestre = promedio(
-      qa.filter((q) => enRango(q.clase_date) && q.score != null).map((q) => Number(q.score)),
+      qa
+        .filter((q) => enRango(q.fecha_monitoreo) && q.nota_final != null)
+        .map((q) => Number(q.nota_final)),
     );
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
@@ -227,7 +234,9 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       const mes = i + 1;
       const d = dsatDeMes(mes);
       const q = promedio(
-        qa.filter((x) => mesDe(x.clase_date) === mes && x.score != null).map((x) => Number(x.score)),
+        qa
+          .filter((x) => mesDe(x.fecha_monitoreo) === mes && x.nota_final != null)
+          .map((x) => Number(x.nota_final)),
       );
       const filasNl = nl.filter((x) => mesDe(x.fecha) === mes);
       const ev = filasNl.filter((x) => (x.resultado ?? "") !== "Pending").length;
@@ -321,9 +330,9 @@ export const comentariosCsat = createServerFn({ method: "POST" })
 
     const filas = await todasLasFilas<any>(() =>
       supabaseAdmin
-        .from("dsat_evals")
+        .from("csat_respuestas")
         .select(
-          "id, period_month, syllabus, class_id, experience_comment, coach_comment, coach_score, status, razon_no_cuenta",
+          "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, razon_no_aplica",
         )
         .eq("teacher_id", coachId)
         .gte("period_month", inicio)
@@ -332,7 +341,19 @@ export const comentariosCsat = createServerFn({ method: "POST" })
 
     const texto = (data.texto ?? "").trim().toLowerCase();
 
-    const filtradas = filas
+    const conSalida = filas.map((f) => ({
+      id: f.id,
+      period_month: f.period_month,
+      syllabus: f.curso,
+      class_id: f.salon,
+      experience_comment: f.experiencia_comment,
+      coach_comment: f.coach_comment,
+      coach_score: f.coach_score,
+      status: f.aplica_coach ?? "Aplica a coach",
+      razon_no_cuenta: f.razon_no_aplica,
+    }));
+
+    const filtradas = conSalida
       .filter((f) => (f.experience_comment || f.coach_comment))
       .filter((f) => (data.mes ? Number(String(f.period_month).slice(5, 7)) === data.mes : true))
       .filter((f) => (data.syllabus ? f.syllabus === data.syllabus : true))
@@ -344,12 +365,12 @@ export const comentariosCsat = createServerFn({ method: "POST" })
       )
       .slice(0, 500);
 
-    const syllabi = [...new Set(filas.map((f) => f.syllabus).filter(Boolean))].sort();
-    const clases = [...new Set(filas.map((f) => f.class_id).filter((c) => c != null))]
+    const syllabi = [...new Set(conSalida.map((f) => f.syllabus).filter(Boolean))].sort();
+    const clases = [...new Set(conSalida.map((f) => f.class_id).filter((c) => c != null))]
       .map(String)
       .sort();
 
-    return { filas: filtradas, syllabi, clases, total: filas.length };
+    return { filas: filtradas, syllabi, clases, total: conSalida.length };
   });
 
 const entradaQa = z.object({
@@ -372,31 +393,34 @@ export const detalleQa = createServerFn({ method: "POST" })
 
     const filas = await todasLasFilas<any>(() =>
       supabaseAdmin
-        .from("qa_evals")
-        .select("id, clase_date, clase, syllabus, level, schedule, eval_by, score, applicable")
+        .from("qa_evaluaciones")
+        .select(
+          "id, fecha_monitoreo, clave, quality_type, level, horario, gerente, nota_final, area_mejora, applicable",
+        )
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("clase_date", inicio)
-        .lt("clase_date", fin)
-        .order("clase_date", { ascending: false }),
+        .gte("fecha_monitoreo", inicio)
+        .lt("fecha_monitoreo", fin)
+        .order("fecha_monitoreo", { ascending: false }),
     );
 
-    const notas = filas.map((f) => Number(f.score)).filter((n) => !Number.isNaN(n));
+    const notas = filas.map((f) => Number(f.nota_final)).filter((n) => !Number.isNaN(n));
     const prom = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
 
     return {
       resumen: { frase: fraseQa(prom), rango: rangoQa(prom), registros: filas.length },
       filas: filas.map((f) => ({
         id: f.id,
-        fecha: f.clase_date,
-        clase: f.clase,
-        syllabus: f.syllabus,
+        fecha: f.fecha_monitoreo,
+        clase: f.clave,
+        syllabus: f.quality_type,
         level: f.level,
-        schedule: f.schedule,
-        evaluador: f.eval_by,
-        frase: fraseQa(f.score == null ? null : Number(f.score)),
+        schedule: f.horario,
+        evaluador: f.gerente,
+        area: f.area_mejora,
+        frase: fraseQa(f.nota_final == null ? null : Number(f.nota_final)),
       })),
-      syllabi: [...new Set(filas.map((f) => f.syllabus).filter(Boolean))].sort(),
+      syllabi: [...new Set(filas.map((f) => f.quality_type).filter(Boolean))].sort(),
       niveles: [...new Set(filas.map((f) => f.level).filter(Boolean))].sort(),
     };
   });

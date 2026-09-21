@@ -131,6 +131,132 @@ export type Database = {
         }
         Relationships: []
       }
+      csat_respuestas: {
+        Row: {
+          aplica_coach: string | null
+          bist_comment: string | null
+          bist_score: number | null
+          categoria: string | null
+          coach_aplica: string | null
+          coach_asignado: string | null
+          coach_comment: string | null
+          coach_score: number | null
+          comment_escalar: string | null
+          coordinador: string | null
+          creado: string
+          csat_type: string | null
+          curso: string | null
+          diferenciador_coach: string | null
+          evaluating_coach: string | null
+          experiencia_comment: string | null
+          experiencia_score: number | null
+          horario: string | null
+          id: string
+          idcontrol: number | null
+          inscritos: number | null
+          instalaciones_comment: string | null
+          instalaciones_score: number | null
+          linea_negocio: string | null
+          nivel: string | null
+          pais: string | null
+          period_month: string
+          razon_escalar: string | null
+          razon_no_aplica: string | null
+          salon: string | null
+          student_id: number | null
+          sub_categoria: string | null
+          submitted_at: string | null
+          sucursal: string | null
+          teacher_id: number | null
+          tenure: string | null
+          tenure_aplica: string | null
+          token: string | null
+          trainee_name: string | null
+        }
+        Insert: {
+          aplica_coach?: string | null
+          bist_comment?: string | null
+          bist_score?: number | null
+          categoria?: string | null
+          coach_aplica?: string | null
+          coach_asignado?: string | null
+          coach_comment?: string | null
+          coach_score?: number | null
+          comment_escalar?: string | null
+          coordinador?: string | null
+          creado?: string
+          csat_type?: string | null
+          curso?: string | null
+          diferenciador_coach?: string | null
+          evaluating_coach?: string | null
+          experiencia_comment?: string | null
+          experiencia_score?: number | null
+          horario?: string | null
+          id?: string
+          idcontrol?: number | null
+          inscritos?: number | null
+          instalaciones_comment?: string | null
+          instalaciones_score?: number | null
+          linea_negocio?: string | null
+          nivel?: string | null
+          pais?: string | null
+          period_month: string
+          razon_escalar?: string | null
+          razon_no_aplica?: string | null
+          salon?: string | null
+          student_id?: number | null
+          sub_categoria?: string | null
+          submitted_at?: string | null
+          sucursal?: string | null
+          teacher_id?: number | null
+          tenure?: string | null
+          tenure_aplica?: string | null
+          token?: string | null
+          trainee_name?: string | null
+        }
+        Update: {
+          aplica_coach?: string | null
+          bist_comment?: string | null
+          bist_score?: number | null
+          categoria?: string | null
+          coach_aplica?: string | null
+          coach_asignado?: string | null
+          coach_comment?: string | null
+          coach_score?: number | null
+          comment_escalar?: string | null
+          coordinador?: string | null
+          creado?: string
+          csat_type?: string | null
+          curso?: string | null
+          diferenciador_coach?: string | null
+          evaluating_coach?: string | null
+          experiencia_comment?: string | null
+          experiencia_score?: number | null
+          horario?: string | null
+          id?: string
+          idcontrol?: number | null
+          inscritos?: number | null
+          instalaciones_comment?: string | null
+          instalaciones_score?: number | null
+          linea_negocio?: string | null
+          nivel?: string | null
+          pais?: string | null
+          period_month?: string
+          razon_escalar?: string | null
+          razon_no_aplica?: string | null
+          salon?: string | null
+          student_id?: number | null
+          sub_categoria?: string | null
+          submitted_at?: string | null
+          sucursal?: string | null
+          teacher_id?: number | null
+          tenure?: string | null
+          tenure_aplica?: string | null
+          token?: string | null
+          trainee_name?: string | null
+        }
+        Relationships: []
+      }
       dsat_evals: {
         Row: {
           applicable: number
@@ -221,6 +347,87 @@ export type Database = {
           periodo?: string
           primera_semana?: boolean
           score?: number
+        }
+        Relationships: []
+      }
+      incidencias: {
+        Row: {
+          anio: number | null
+          applicable: number
+          coach_asignado: string | null
+          coach_cubre: string | null
+          coach_id: number | null
+          coordinador: string | null
+          creado: string
+          curso: string | null
+          fecha: string
+          fecha_ingreso: string | null
+          fecha_modificacion: string | null
+          horarios: string | null
+          horas_asignadas: number | null
+          id: string
+          mes: string | null
+          motivo: string | null
+          notas: string | null
+          otros_motivos: string | null
+          otros_motivos_2: string | null
+          pais: string | null
+          sucursal: string | null
+          tipo: string | null
+          week: number | null
+          whodidit: string | null
+        }
+        Insert: {
+          anio?: number | null
+          applicable?: number
+          coach_asignado?: string | null
+          coach_cubre?: string | null
+          coach_id?: number | null
+          coordinador?: string | null
+          creado?: string
+          curso?: string | null
+          fecha: string
+          fecha_ingreso?: string | null
+          fecha_modificacion?: string | null
+          horarios?: string | null
+          horas_asignadas?: number | null
+          id?: string
+          mes?: string | null
+          motivo?: string | null
+          notas?: string | null
+          otros_motivos?: string | null
+          otros_motivos_2?: string | null
+          pais?: string | null
+          sucursal?: string | null
+          tipo?: string | null
+          week?: number | null
+          whodidit?: string | null
+        }
+        Update: {
+          anio?: number | null
+          applicable?: number
+          coach_asignado?: string | null
+          coach_cubre?: string | null
+          coach_id?: number | null
+          coordinador?: string | null
+          creado?: string
+          curso?: string | null
+          fecha?: string
+          fecha_ingreso?: string | null
+          fecha_modificacion?: string | null
+          horarios?: string | null
+          horas_asignadas?: number | null
+          id?: string
+          mes?: string | null
+          motivo?: string | null
+          notas?: string | null
+          otros_motivos?: string | null
+          otros_motivos_2?: string | null
+          pais?: string | null
+          sucursal?: string | null
+          tipo?: string | null
+          week?: number | null
+          whodidit?: string | null
         }
         Relationships: []
       }
@@ -398,6 +605,90 @@ export type Database = {
           score?: number | null
           syllabus?: string | null
           week?: number | null
+        }
+        Relationships: []
+      }
+      qa_evaluaciones: {
+        Row: {
+          applicable: number
+          area_mejora: string | null
+          clave: string | null
+          coach: string | null
+          coach_id: number | null
+          comentario: string | null
+          creado: string
+          evaluating_time: number | null
+          fecha_ingresado: string | null
+          fecha_monitoreo: string
+          feedback_type: string | null
+          gerente: string | null
+          gerente2: string | null
+          horario: string | null
+          id: string
+          level: string | null
+          month: string | null
+          nota_final: number | null
+          nota_suc: number | null
+          pais: string | null
+          quality_type: string | null
+          sucursal: string | null
+          type_monitoreo: string | null
+          type_qa: string | null
+          week: string | null
+        }
+        Insert: {
+          applicable?: number
+          area_mejora?: string | null
+          clave?: string | null
+          coach?: string | null
+          coach_id?: number | null
+          comentario?: string | null
+          creado?: string
+          evaluating_time?: number | null
+          fecha_ingresado?: string | null
+          fecha_monitoreo: string
+          feedback_type?: string | null
+          gerente?: string | null
+          gerente2?: string | null
+          horario?: string | null
+          id?: string
+          level?: string | null
+          month?: string | null
+          nota_final?: number | null
+          nota_suc?: number | null
+          pais?: string | null
+          quality_type?: string | null
+          sucursal?: string | null
+          type_monitoreo?: string | null
+          type_qa?: string | null
+          week?: string | null
+        }
+        Update: {
+          applicable?: number
+          area_mejora?: string | null
+          clave?: string | null
+          coach?: string | null
+          coach_id?: number | null
+          comentario?: string | null
+          creado?: string
+          evaluating_time?: number | null
+          fecha_ingresado?: string | null
+          fecha_monitoreo?: string
+          feedback_type?: string | null
+          gerente?: string | null
+          gerente2?: string | null
+          horario?: string | null
+          id?: string
+          level?: string | null
+          month?: string | null
+          nota_final?: number | null
+          nota_suc?: number | null
+          pais?: string | null
+          quality_type?: string | null
+          sucursal?: string | null
+          type_monitoreo?: string | null
+          type_qa?: string | null
+          week?: string | null
         }
         Relationships: []
       }

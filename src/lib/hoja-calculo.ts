@@ -71,8 +71,14 @@ export function fecha(valor: unknown): string | null {
   const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
 
+  // Los archivos usan mes/día/año; si el primer número pasa de 12 es día/mes/año.
   const local = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (local) return `${local[3]}-${dosDigitos(Number(local[2]))}-${dosDigitos(Number(local[1]))}`;
+  if (local) {
+    const a = Number(local[1]);
+    const b = Number(local[2]);
+    const [mes, dia] = a > 12 ? [b, a] : [a, b];
+    return `${local[3]}-${dosDigitos(mes)}-${dosDigitos(dia)}`;
+  }
 
   const d = new Date(t);
   if (!Number.isNaN(d.getTime())) {
