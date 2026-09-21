@@ -1,18 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_authenticated/_admin/inicio")({
+export const Route = createFileRoute("/_authenticated/_admin/homepage")({
   head: () => ({
     meta: [
-      { title: "Inicio | Portal de Coaches E4CC" },
+      { title: "Homepage | Portal de Coaches E4CC" },
       { name: "description", content: "Panel interno de coaches E4CC." },
-      { property: "og:title", content: "Inicio | Portal de Coaches E4CC" },
+      { property: "og:title", content: "Homepage | Portal de Coaches E4CC" },
       { property: "og:description", content: "Panel interno de coaches E4CC." },
     ],
   }),
-  component: Inicio,
+  component: Homepage,
 });
 
-function Inicio() {
+function Homepage() {
   const { perfil } = Route.useRouteContext();
 
   return (

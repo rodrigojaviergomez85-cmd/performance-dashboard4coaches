@@ -68,7 +68,7 @@ function PantallaAcceso() {
         setError("No fue posible iniciar la sesión. Intente de nuevo.");
         return;
       }
-      await navigate({ to: "/inicio", replace: true });
+      await navigate({ to: "/homepage", replace: true });
     } catch {
       setError("No fue posible procesar la solicitud. Intente de nuevo.");
     } finally {
@@ -91,7 +91,7 @@ function PantallaAcceso() {
         setError("Usuario o contraseña incorrectos.");
         return;
       }
-      await navigate({ to: "/inicio", replace: true });
+      await navigate({ to: "/homepage", replace: true });
     } catch {
       setError("No fue posible procesar la solicitud. Intente de nuevo.");
     } finally {

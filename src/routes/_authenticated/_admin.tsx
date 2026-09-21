@@ -17,9 +17,9 @@ export const Route = createFileRoute("/_authenticated/_admin")({
 });
 
 const ENLACES = [
-  { to: "/inicio", etiqueta: "Inicio" },
-  { to: "/panel-desempeno", etiqueta: "Panel de Desempeño" },
-  { to: "/desempeno-academico", etiqueta: "Desempeño Académico" },
+  { to: "/homepage", etiqueta: "Homepage" },
+  { to: "/performance-dashboard", etiqueta: "Performance Dashboard" },
+  { to: "/academic-performance", etiqueta: "Academic Performance" },
 ] as const;
 
 function DisposicionAdmin() {
