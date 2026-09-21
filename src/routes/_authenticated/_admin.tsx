@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/_admin")({
 
 const ENLACES = [
   { to: "/homepage", etiqueta: "Homepage" },
+  { to: "/coaches", etiqueta: "Coaches" },
   { to: "/performance-dashboard", etiqueta: "Performance Dashboard" },
   { to: "/academic-performance", etiqueta: "Academic Performance" },
 ] as const;
