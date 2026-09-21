@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      abs_incidencias: {
+        Row: {
+          applicable: number
+          class_id: number
+          coach: string | null
+          coach_id: number | null
+          creado: string
+          fecha: string
+          horario: string | null
+          id: string
+          level: string | null
+          syllabus: string | null
+        }
+        Insert: {
+          applicable?: number
+          class_id: number
+          coach?: string | null
+          coach_id?: number | null
+          creado?: string
+          fecha: string
+          horario?: string | null
+          id?: string
+          level?: string | null
+          syllabus?: string | null
+        }
+        Update: {
+          applicable?: number
+          class_id?: number
+          coach?: string | null
+          coach_id?: number | null
+          creado?: string
+          fecha?: string
+          horario?: string | null
+          id?: string
+          level?: string | null
+          syllabus?: string | null
+        }
+        Relationships: []
+      }
       auditoria: {
         Row: {
           accion: string
@@ -92,6 +131,63 @@ export type Database = {
         }
         Relationships: []
       }
+      dsat_evals: {
+        Row: {
+          applicable: number
+          class_id: number | null
+          coach_comment: string | null
+          coach_score: number | null
+          creado: string
+          experience_comment: string | null
+          id: string
+          level: string | null
+          period_month: string | null
+          razon_no_cuenta: string | null
+          schedule: string | null
+          status: string | null
+          syllabus: string | null
+          teacher_id: number | null
+          teacher_name: string | null
+          token: string
+        }
+        Insert: {
+          applicable?: number
+          class_id?: number | null
+          coach_comment?: string | null
+          coach_score?: number | null
+          creado?: string
+          experience_comment?: string | null
+          id?: string
+          level?: string | null
+          period_month?: string | null
+          razon_no_cuenta?: string | null
+          schedule?: string | null
+          status?: string | null
+          syllabus?: string | null
+          teacher_id?: number | null
+          teacher_name?: string | null
+          token: string
+        }
+        Update: {
+          applicable?: number
+          class_id?: number | null
+          coach_comment?: string | null
+          coach_score?: number | null
+          creado?: string
+          experience_comment?: string | null
+          id?: string
+          level?: string | null
+          period_month?: string | null
+          razon_no_cuenta?: string | null
+          schedule?: string | null
+          status?: string | null
+          syllabus?: string | null
+          teacher_id?: number | null
+          teacher_name?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       encuestas: {
         Row: {
           coach_id: number
@@ -125,6 +221,87 @@ export type Database = {
           periodo?: string
           primera_semana?: boolean
           score?: number
+        }
+        Relationships: []
+      }
+      lateness: {
+        Row: {
+          coordinator: string | null
+          creado: string
+          fecha: string
+          id: string
+          late_count: number
+          senior: string | null
+          teacher_id: number | null
+          teacher_name: string | null
+        }
+        Insert: {
+          coordinator?: string | null
+          creado?: string
+          fecha: string
+          id?: string
+          late_count?: number
+          senior?: string | null
+          teacher_id?: number | null
+          teacher_name?: string | null
+        }
+        Update: {
+          coordinator?: string | null
+          creado?: string
+          fecha?: string
+          id?: string
+          late_count?: number
+          senior?: string | null
+          teacher_id?: number | null
+          teacher_name?: string | null
+        }
+        Relationships: []
+      }
+      nl_evals: {
+        Row: {
+          class_id: number
+          coach: string | null
+          coach_id: number | null
+          creado: string
+          evaluator: string | null
+          fecha: string
+          horario: string | null
+          id: string
+          level: string | null
+          resultado: string | null
+          student: string | null
+          student_id: number | null
+          syllabus: string | null
+        }
+        Insert: {
+          class_id: number
+          coach?: string | null
+          coach_id?: number | null
+          creado?: string
+          evaluator?: string | null
+          fecha: string
+          horario?: string | null
+          id?: string
+          level?: string | null
+          resultado?: string | null
+          student?: string | null
+          student_id?: number | null
+          syllabus?: string | null
+        }
+        Update: {
+          class_id?: number
+          coach?: string | null
+          coach_id?: number | null
+          creado?: string
+          evaluator?: string | null
+          fecha?: string
+          horario?: string | null
+          id?: string
+          level?: string | null
+          resultado?: string | null
+          student?: string | null
+          student_id?: number | null
+          syllabus?: string | null
         }
         Relationships: []
       }
@@ -167,6 +344,60 @@ export type Database = {
           trimestre_activo?: string | null
           umbral_great?: number
           umbral_superstar?: number
+        }
+        Relationships: []
+      }
+      qa_evals: {
+        Row: {
+          applicable: number
+          clase: string | null
+          clase_date: string | null
+          coach: string | null
+          coach_id: number | null
+          comments: string | null
+          creado: string
+          eval_by: string | null
+          eval_id: number
+          id: string
+          level: string | null
+          schedule: string | null
+          score: number | null
+          syllabus: string | null
+          week: number | null
+        }
+        Insert: {
+          applicable?: number
+          clase?: string | null
+          clase_date?: string | null
+          coach?: string | null
+          coach_id?: number | null
+          comments?: string | null
+          creado?: string
+          eval_by?: string | null
+          eval_id: number
+          id?: string
+          level?: string | null
+          schedule?: string | null
+          score?: number | null
+          syllabus?: string | null
+          week?: number | null
+        }
+        Update: {
+          applicable?: number
+          clase?: string | null
+          clase_date?: string | null
+          coach?: string | null
+          coach_id?: number | null
+          comments?: string | null
+          creado?: string
+          eval_by?: string | null
+          eval_id?: number
+          id?: string
+          level?: string | null
+          schedule?: string | null
+          score?: number | null
+          syllabus?: string | null
+          week?: number | null
         }
         Relationships: []
       }

@@ -1,19 +1,19 @@
 import { createFileRoute, redirect, Outlet } from "@tanstack/react-router";
-import { verificarAdmin } from "@/lib/auth.functions";
+import { verificarAcceso } from "@/lib/auth.functions";
 import { BarraLateral } from "@/components/barra-lateral";
 
-export const Route = createFileRoute("/_authenticated/_admin")({
+export const Route = createFileRoute("/_authenticated/_portal")({
   ssr: false,
   beforeLoad: async () => {
-    // Se valida en el servidor en cada navegación. El rol nunca viene del navegador.
-    const perfil = await verificarAdmin();
+    // Cualquier coach activo; el rol se resuelve siempre en el servidor.
+    const perfil = await verificarAcceso();
     if (!perfil.ok) throw redirect({ to: "/auth" });
     return { perfil };
   },
-  component: DisposicionAdmin,
+  component: DisposicionPortal,
 });
 
-function DisposicionAdmin() {
+function DisposicionPortal() {
   const { perfil } = Route.useRouteContext();
 
   return (
