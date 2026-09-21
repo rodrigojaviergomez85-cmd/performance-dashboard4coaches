@@ -105,9 +105,9 @@ function TarjetaLock({
       </div>
       <p className="mt-3 text-center text-[10px] text-muted-foreground">{nota}</p>
       {accion && (
-        <button type="button" onClick={accion} className="mt-1 text-xs font-medium text-scorecard-link hover:underline">
+        <Button variant="link" size="sm" onClick={accion} className="mt-1 h-auto p-0 text-xs text-scorecard-link">
           View details <span aria-hidden="true">→</span>
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -291,9 +291,9 @@ function PerformanceDashboard() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.bloqueado ? "Below minimum locks Category" : "Below minimum locks Category"} accion={() => setMostrarQa((actual) => !actual)} tono={data.qa.bloqueado ? "warning" : "success"} />
-            <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Locks Category at >3" tono={data.incidencias > 3 ? "warning" : undefined} />
+            <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Locks Category at >3" {...(data.incidencias > 3 ? { tono: "warning" as const } : {})} />
             <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
-            <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota="≥70% boosts to SUPERSTAR" tono={data.nl !== null && data.nl >= 70 ? "success" : undefined} />
+            <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota="≥70% boosts to SUPERSTAR" {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 
           {mostrarQa && (
