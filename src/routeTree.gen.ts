@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as AuthenticatedAdminAcademicPerformanceRouteImport } from './routes/_authenticated/_admin/academic-performance'
+import { Route as AuthenticatedAdminCoachesRouteImport } from './routes/_authenticated/_admin/coaches'
 import { Route as AuthenticatedAdminHomepageRouteImport } from './routes/_authenticated/_admin/homepage'
 import { Route as AuthenticatedAdminPerformanceDashboardRouteImport } from './routes/_authenticated/_admin/performance-dashboard'
 
@@ -41,6 +42,12 @@ const AuthenticatedAdminAcademicPerformanceRoute =
     path: '/academic-performance',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCoachesRoute =
+  AuthenticatedAdminCoachesRouteImport.update({
+    id: '/coaches',
+    path: '/coaches',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminHomepageRoute =
   AuthenticatedAdminHomepageRouteImport.update({
     id: '/homepage',
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
+  '/coaches': typeof AuthenticatedAdminCoachesRoute
   '/homepage': typeof AuthenticatedAdminHomepageRoute
   '/performance-dashboard': typeof AuthenticatedAdminPerformanceDashboardRoute
 }
@@ -65,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
+  '/coaches': typeof AuthenticatedAdminCoachesRoute
   '/homepage': typeof AuthenticatedAdminHomepageRoute
   '/performance-dashboard': typeof AuthenticatedAdminPerformanceDashboardRoute
 }
@@ -75,6 +84,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/_admin/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
+  '/_authenticated/_admin/coaches': typeof AuthenticatedAdminCoachesRoute
   '/_authenticated/_admin/homepage': typeof AuthenticatedAdminHomepageRoute
   '/_authenticated/_admin/performance-dashboard': typeof AuthenticatedAdminPerformanceDashboardRoute
 }
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/academic-performance'
+    | '/coaches'
     | '/homepage'
     | '/performance-dashboard'
   fileRoutesByTo: FileRoutesByTo
@@ -91,6 +102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/academic-performance'
+    | '/coaches'
     | '/homepage'
     | '/performance-dashboard'
   id:
@@ -100,6 +112,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/_admin'
     | '/_authenticated/_admin/academic-performance'
+    | '/_authenticated/_admin/coaches'
     | '/_authenticated/_admin/homepage'
     | '/_authenticated/_admin/performance-dashboard'
   fileRoutesById: FileRoutesById
@@ -147,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAcademicPerformanceRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_admin/coaches': {
+      id: '/_authenticated/_admin/coaches'
+      path: '/coaches'
+      fullPath: '/coaches'
+      preLoaderRoute: typeof AuthenticatedAdminCoachesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/_admin/homepage': {
       id: '/_authenticated/_admin/homepage'
       path: '/homepage'
@@ -166,6 +186,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAcademicPerformanceRoute: typeof AuthenticatedAdminAcademicPerformanceRoute
+  AuthenticatedAdminCoachesRoute: typeof AuthenticatedAdminCoachesRoute
   AuthenticatedAdminHomepageRoute: typeof AuthenticatedAdminHomepageRoute
   AuthenticatedAdminPerformanceDashboardRoute: typeof AuthenticatedAdminPerformanceDashboardRoute
 }
@@ -173,6 +194,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAcademicPerformanceRoute:
     AuthenticatedAdminAcademicPerformanceRoute,
+  AuthenticatedAdminCoachesRoute: AuthenticatedAdminCoachesRoute,
   AuthenticatedAdminHomepageRoute: AuthenticatedAdminHomepageRoute,
   AuthenticatedAdminPerformanceDashboardRoute:
     AuthenticatedAdminPerformanceDashboardRoute,
