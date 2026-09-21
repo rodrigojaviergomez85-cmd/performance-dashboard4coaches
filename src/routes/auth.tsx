@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { accesoCoach } from "@/lib/auth.functions";
+import { solicitarCodigoCoach, vincularCoach } from "@/lib/auth.functions";
 import { AlternadorTema } from "@/components/alternador-tema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,17 +21,19 @@ const DOMINIO_INTERNO = "e4cc.local";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Ingresar | Portal de Coaches E4CC" },
+      { title: "Sign in | Performance Dashboard" },
       {
         name: "description",
         content:
-          "Acceso de coaches con su número de coach y correo, y acceso administrativo con usuario y contraseña.",
+          "Coaches sign in with their Coach Id and email; administrators sign in with username and password.",
       },
-      { property: "og:title", content: "Ingresar | Portal de Coaches E4CC" },
+      { property: "og:title", content: "Sign in | Performance Dashboard" },
       {
         property: "og:description",
-        content: "Acceso interno al Portal de Coaches E4CC.",
+        content: "Internal access to the Performance Dashboard.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PantallaAcceso,
@@ -39,38 +41,64 @@ export const Route = createFileRoute("/auth")({
 
 function PantallaAcceso() {
   const navigate = useNavigate();
-  const entrarComoCoach = useServerFn(accesoCoach);
+  const pedirCodigo = useServerFn(solicitarCodigoCoach);
+  const enlazarCoach = useServerFn(vincularCoach);
 
   const [coachId, setCoachId] = useState("");
   const [email, setEmail] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [usuario, setUsuario] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
-  async function enviarCoach(evento: React.FormEvent) {
+  async function enviarCodigo(evento: React.FormEvent) {
     evento.preventDefault();
     setCargando(true);
     setError(null);
+    setAviso(null);
     try {
-      const resultado = await entrarComoCoach({
+      const resultado = await pedirCodigo({
         data: { coachId: Number(coachId), email: email.trim().toLowerCase() },
       });
       if (!resultado.ok) {
         setError(resultado.error);
         return;
       }
-      const { error: errorSesion } = await supabase.auth.setSession({
-        access_token: resultado.access_token,
-        refresh_token: resultado.refresh_token,
+      setCodigoEnviado(true);
+      setAviso("We sent a code to your email. It expires in a few minutes.");
+    } catch {
+      setError("We could not process the request. Please try again.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function verificarCodigo(evento: React.FormEvent) {
+    evento.preventDefault();
+    setCargando(true);
+    setError(null);
+    try {
+      const { error: errorCodigo } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: codigo.trim(),
+        type: "email",
       });
-      if (errorSesion) {
-        setError("No fue posible iniciar la sesión. Intente de nuevo.");
+      if (errorCodigo) {
+        setError("Invalid or expired code.");
         return;
       }
-      await navigate({ to: "/homepage", replace: true });
+      const enlace = await enlazarCoach({ data: undefined });
+      if (!enlace.ok) {
+        await supabase.auth.signOut();
+        setError("This account does not match an active coach.");
+        return;
+      }
+      await navigate({ to: "/performance-dashboard", replace: true });
     } catch {
-      setError("No fue posible procesar la solicitud. Intente de nuevo.");
+      setError("We could not process the request. Please try again.");
     } finally {
       setCargando(false);
     }
@@ -88,12 +116,12 @@ function PantallaAcceso() {
         password: contrasena,
       });
       if (errorSesion) {
-        setError("Usuario o contraseña incorrectos.");
+        setError("Incorrect username or password.");
         return;
       }
       await navigate({ to: "/homepage", replace: true });
     } catch {
-      setError("No fue posible procesar la solicitud. Intente de nuevo.");
+      setError("We could not process the request. Please try again.");
     } finally {
       setCargando(false);
     }
@@ -109,10 +137,8 @@ function PantallaAcceso() {
       <div className="flex flex-1 items-center justify-center px-4 pb-16">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Portal de Coaches E4CC</CardTitle>
-            <CardDescription>
-              Elija el tipo de acceso que le corresponde.
-            </CardDescription>
+            <CardTitle className="text-2xl">Performance Dashboard</CardTitle>
+            <CardDescription>Choose how you want to sign in.</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs
@@ -122,58 +148,95 @@ function PantallaAcceso() {
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="coach">Coach</TabsTrigger>
-                <TabsTrigger value="admin">Administración</TabsTrigger>
+                <TabsTrigger value="admin">Admin</TabsTrigger>
               </TabsList>
 
               <TabsContent value="coach">
-                <form onSubmit={enviarCoach} className="space-y-4">
+                <form
+                  onSubmit={codigoEnviado ? verificarCodigo : enviarCodigo}
+                  className="space-y-4"
+                >
                   <div className="space-y-2">
-                    <Label htmlFor="coachId">Número de coach</Label>
+                    <Label htmlFor="coachId">Coach Id</Label>
                     <Input
                       id="coachId"
                       inputMode="numeric"
                       required
+                      disabled={codigoEnviado}
                       value={coachId}
                       onChange={(e) => setCoachId(e.target.value.replace(/\D/g, ""))}
                       placeholder="12345"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Correo</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       autoComplete="email"
                       required
+                      disabled={codigoEnviado}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="nombre@correo.com"
+                      placeholder="name@email.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codigo">Code</Label>
+                    <Input
+                      id="codigo"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required={codigoEnviado}
+                      disabled={!codigoEnviado}
+                      value={codigo}
+                      onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
+                      placeholder="000000"
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={cargando}>
-                    {cargando ? "Verificando..." : "Ingresar"}
+                    {cargando
+                      ? "Verifying..."
+                      : codigoEnviado
+                        ? "Sign in"
+                        : "Send code"}
                   </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Sus datos se verifican contra la lista de coaches activos.
-                  </p>
+                  {codigoEnviado ? (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="w-full"
+                      disabled={cargando}
+                      onClick={() => {
+                        setCodigoEnviado(false);
+                        setCodigo("");
+                        setAviso(null);
+                      }}
+                    >
+                      Use a different Coach Id or email
+                    </Button>
+                  ) : null}
+                  {aviso ? (
+                    <p className="text-xs text-muted-foreground">{aviso}</p>
+                  ) : null}
                 </form>
               </TabsContent>
 
               <TabsContent value="admin">
                 <form onSubmit={enviarAdmin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="usuario">Usuario</Label>
+                    <Label htmlFor="usuario">Username</Label>
                     <Input
                       id="usuario"
                       autoComplete="username"
                       required
                       value={usuario}
                       onChange={(e) => setUsuario(e.target.value)}
-                      placeholder="admin.e4cc"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contrasena">Contraseña</Label>
+                    <Label htmlFor="contrasena">Password</Label>
                     <Input
                       id="contrasena"
                       type="password"
@@ -184,7 +247,7 @@ function PantallaAcceso() {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={cargando}>
-                    {cargando ? "Verificando..." : "Ingresar"}
+                    {cargando ? "Verifying..." : "Sign in"}
                   </Button>
                 </form>
               </TabsContent>
