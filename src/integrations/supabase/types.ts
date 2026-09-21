@@ -42,37 +42,52 @@ export type Database = {
         Row: {
           activo: boolean
           auth_user_id: string | null
+          categoria: string | null
           coach_id: number
           coordinador: string | null
           creado: string
           email: string
+          estado: string | null
           id: string
+          id_coordinador: number | null
           nombre: string
+          pais: string | null
           rol: string
+          sucursal: string | null
           tenure: string | null
         }
         Insert: {
           activo?: boolean
           auth_user_id?: string | null
+          categoria?: string | null
           coach_id: number
           coordinador?: string | null
           creado?: string
           email: string
+          estado?: string | null
           id?: string
+          id_coordinador?: number | null
           nombre: string
+          pais?: string | null
           rol?: string
+          sucursal?: string | null
           tenure?: string | null
         }
         Update: {
           activo?: boolean
           auth_user_id?: string | null
+          categoria?: string | null
           coach_id?: number
           coordinador?: string | null
           creado?: string
           email?: string
+          estado?: string | null
           id?: string
+          id_coordinador?: number | null
           nombre?: string
+          pais?: string | null
           rol?: string
+          sucursal?: string | null
           tenure?: string | null
         }
         Relationships: []
