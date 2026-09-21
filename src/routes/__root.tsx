@@ -77,16 +77,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Portal de Coaches English4Kids" },
+      { title: "Portal de Coaches E4CC" },
       {
         name: "description",
-        content: "Portal interno de coaches de English4Kids.",
+        content: "Portal interno de coaches E4CC.",
       },
-      { name: "author", content: "English4Kids" },
-      { property: "og:title", content: "Portal de Coaches English4Kids" },
+      { name: "author", content: "E4CC" },
+      { property: "og:title", content: "Portal de Coaches E4CC" },
       {
         property: "og:description",
-        content: "Portal interno de coaches de English4Kids.",
+        content: "Portal interno de coaches E4CC.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
