@@ -2,27 +2,25 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-const emailSchema = z.object({ email: z.string().email().max(200) });
-const codigoSchema = z.object({
+const accesoSchema = z.object({
+  coachId: z.number().int().positive(),
   email: z.string().email().max(200),
-  codigo: z.string().regex(/^\d{6}$/),
 });
 
-const MENSAJE_NEUTRO = "Si el correo está registrado, le enviamos un código.";
-const LIMITE_POR_HORA = 5;
-const VIGENCIA_MINUTOS = 10;
+const MENSAJE_ERROR = "Los datos no coinciden con un coach activo.";
+const LIMITE_POR_HORA = 10;
 
 /**
- * Solicita el código de acceso. La respuesta es siempre idéntica, exista o no
- * el correo. Toda la verificación ocurre en el servidor.
+ * Acceso de coaches sin cuenta: se valida en el servidor que el par
+ * coach_id + correo exista en la lista de coaches activos. Nunca se confía
+ * en nada que envíe el navegador para determinar el rol.
  */
-export const solicitarCodigo = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => emailSchema.parse(input))
+export const accesoCoach = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => accesoSchema.parse(input))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Límite: 5 solicitudes por correo por hora.
     const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { count } = await supabaseAdmin
       .from("otp_intentos")
@@ -31,21 +29,29 @@ export const solicitarCodigo = createServerFn({ method: "POST" })
       .gte("creado", desde);
 
     if ((count ?? 0) >= LIMITE_POR_HORA) {
-      return { mensaje: MENSAJE_NEUTRO };
+      return {
+        ok: false as const,
+        error: "Demasiados intentos. Espere una hora e intente de nuevo.",
+      };
     }
+
+    await supabaseAdmin.from("otp_intentos").insert({ email });
 
     const { data: coach } = await supabaseAdmin
       .from("coaches")
-      .select("id, email, activo")
+      .select("id, nombre, email, activo")
       .eq("email", email)
+      .eq("coach_id", data.coachId)
       .eq("activo", true)
       .maybeSingle();
 
     if (!coach) {
-      return { mensaje: MENSAJE_NEUTRO };
+      return { ok: false as const, error: MENSAJE_ERROR };
     }
 
-    await supabaseAdmin.from("otp_intentos").insert({ email });
+    const url = process.env["SUPABASE_URL"]!;
+    const servicio = process.env["SUPABASE_SERVICE_ROLE_KEY"]!;
+    const publica = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
 
     // El usuario de autenticación se crea solo para coaches válidos.
     const { data: existentes } = await supabaseAdmin.auth.admin.listUsers({
@@ -57,73 +63,35 @@ export const solicitarCodigo = createServerFn({ method: "POST" })
       await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
     }
 
-    const url = process.env["SUPABASE_URL"]!;
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-    const respuesta = await fetch(`${url}/auth/v1/otp`, {
+    const enlace = await fetch(`${url}/auth/v1/admin/generate_link`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: key },
-      body: JSON.stringify({ email, create_user: false }),
+      headers: {
+        "Content-Type": "application/json",
+        apikey: servicio,
+        Authorization: `Bearer ${servicio}`,
+      },
+      body: JSON.stringify({ type: "magiclink", email }),
     });
 
-    if (!respuesta.ok) {
-      console.error("Error al enviar el código:", await respuesta.text());
+    if (!enlace.ok) {
+      console.error("Error al generar el acceso:", await enlace.text());
+      return { ok: false as const, error: MENSAJE_ERROR };
     }
 
-    await supabaseAdmin.from("auditoria").insert({
-      actor_id: coach.id,
-      accion: "codigo_solicitado",
-      detalle: { email },
-    });
+    const { hashed_token } = (await enlace.json()) as { hashed_token: string };
 
-    return { mensaje: MENSAJE_NEUTRO };
-  });
-
-/**
- * Verifica el código en el servidor y devuelve la sesión. Aplica una vigencia
- * propia de 10 minutos desde la solicitud.
- */
-export const verificarCodigo = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => codigoSchema.parse(input))
-  .handler(async ({ data }) => {
-    const email = data.email.trim().toLowerCase();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: coach } = await supabaseAdmin
-      .from("coaches")
-      .select("id, nombre, activo")
-      .eq("email", email)
-      .eq("activo", true)
-      .maybeSingle();
-
-    if (!coach) {
-      return { ok: false as const, error: "El código no es válido o ya expiró." };
-    }
-
-    const desde = new Date(Date.now() - VIGENCIA_MINUTOS * 60 * 1000).toISOString();
-    const { data: intentos } = await supabaseAdmin
-      .from("otp_intentos")
-      .select("id")
-      .eq("email", email)
-      .gte("creado", desde)
-      .limit(1);
-
-    if (!intentos || intentos.length === 0) {
-      return { ok: false as const, error: "El código no es válido o ya expiró." };
-    }
-
-    const url = process.env["SUPABASE_URL"]!;
-    const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-    const respuesta = await fetch(`${url}/auth/v1/verify`, {
+    const verificacion = await fetch(`${url}/auth/v1/verify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: key },
-      body: JSON.stringify({ type: "email", email, token: data.codigo }),
+      headers: { "Content-Type": "application/json", apikey: publica },
+      body: JSON.stringify({ type: "magiclink", token_hash: hashed_token }),
     });
 
-    if (!respuesta.ok) {
-      return { ok: false as const, error: "El código no es válido o ya expiró." };
+    if (!verificacion.ok) {
+      console.error("Error al abrir la sesión:", await verificacion.text());
+      return { ok: false as const, error: MENSAJE_ERROR };
     }
 
-    const sesion = (await respuesta.json()) as {
+    const sesion = (await verificacion.json()) as {
       access_token: string;
       refresh_token: string;
       user: { id: string };
@@ -136,8 +104,8 @@ export const verificarCodigo = createServerFn({ method: "POST" })
 
     await supabaseAdmin.from("auditoria").insert({
       actor_id: coach.id,
-      accion: "inicio_sesion",
-      detalle: { email },
+      accion: "inicio_sesion_coach",
+      detalle: { email, coach_id: data.coachId },
     });
 
     return {
