@@ -11,11 +11,11 @@ const MENSAJE_ERROR = "Los datos no coinciden con un coach activo.";
 const LIMITE_POR_HORA = 10;
 
 /**
- * Acceso de coaches sin cuenta: se valida en el servidor que el par
- * coach_id + correo exista en la lista de coaches activos. Nunca se confía
- * en nada que envíe el navegador para determinar el rol.
+ * Paso 1 del acceso de coaches: se valida en el servidor que el coach_id
+ * exista y esté activo, y que el correo pertenezca a ese coach. Solo
+ * entonces se envía un código de un solo uso al correo registrado.
  */
-export const accesoCoach = createServerFn({ method: "POST" })
+export const solicitarCodigoCoach = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => accesoSchema.parse(input))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
@@ -31,27 +31,28 @@ export const accesoCoach = createServerFn({ method: "POST" })
     if ((count ?? 0) >= LIMITE_POR_HORA) {
       return {
         ok: false as const,
-        error: "Demasiados intentos. Espere una hora e intente de nuevo.",
+        error: "Too many attempts. Please wait an hour and try again.",
       };
     }
 
     await supabaseAdmin.from("otp_intentos").insert({ email });
 
+    // 1) El coach debe existir y estar activo.
     const { data: coach } = await supabaseAdmin
       .from("coaches")
       .select("id, nombre, email, activo")
-      .eq("email", email)
       .eq("coach_id", data.coachId)
       .eq("activo", true)
       .maybeSingle();
 
     if (!coach) {
-      return { ok: false as const, error: MENSAJE_ERROR };
+      return { ok: false as const, error: "Coach Id not found or inactive." };
     }
 
-    const url = process.env["SUPABASE_URL"]!;
-    const servicio = process.env["SUPABASE_SERVICE_ROLE_KEY"]!;
-    const publica = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
+    // 2) El correo debe pertenecer a ese coach.
+    if ((coach.email ?? "").trim().toLowerCase() !== email) {
+      return { ok: false as const, error: MENSAJE_ERROR };
+    }
 
     // El usuario de autenticación se crea solo para coaches válidos.
     const { data: existentes } = await supabaseAdmin.auth.admin.listUsers({
@@ -63,56 +64,59 @@ export const accesoCoach = createServerFn({ method: "POST" })
       await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
     }
 
-    const enlace = await fetch(`${url}/auth/v1/admin/generate_link`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: servicio,
-        Authorization: `Bearer ${servicio}`,
-      },
-      body: JSON.stringify({ type: "magiclink", email }),
-    });
+    const url = process.env["SUPABASE_URL"]!;
+    const publica = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
 
-    if (!enlace.ok) {
-      console.error("Error al generar el acceso:", await enlace.text());
-      return { ok: false as const, error: MENSAJE_ERROR };
-    }
-
-    const { hashed_token } = (await enlace.json()) as { hashed_token: string };
-
-    const verificacion = await fetch(`${url}/auth/v1/verify`, {
+    const envio = await fetch(`${url}/auth/v1/otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: publica },
-      body: JSON.stringify({ type: "magiclink", token_hash: hashed_token }),
+      body: JSON.stringify({ email, create_user: false }),
     });
 
-    if (!verificacion.ok) {
-      console.error("Error al abrir la sesión:", await verificacion.text());
-      return { ok: false as const, error: MENSAJE_ERROR };
+    if (!envio.ok) {
+      console.error("Error al enviar el código:", await envio.text());
+      return {
+        ok: false as const,
+        error: "We could not send the code. Please try again.",
+      };
     }
 
-    const sesion = (await verificacion.json()) as {
-      access_token: string;
-      refresh_token: string;
-      user: { id: string };
-    };
+    return { ok: true as const };
+  });
+
+/**
+ * Paso 2: tras verificar el código en el navegador, el servidor enlaza la
+ * cuenta de autenticación con la fila del coach y registra el acceso.
+ */
+export const vincularCoach = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const email = String(context.claims["email"] ?? "").trim().toLowerCase();
+
+    if (!email) return { ok: false as const };
+
+    const { data: coach } = await supabaseAdmin
+      .from("coaches")
+      .select("id, activo")
+      .eq("email", email)
+      .eq("activo", true)
+      .maybeSingle();
+
+    if (!coach) return { ok: false as const };
 
     await supabaseAdmin
       .from("coaches")
-      .update({ auth_user_id: sesion.user.id })
+      .update({ auth_user_id: context.userId })
       .eq("id", coach.id);
 
     await supabaseAdmin.from("auditoria").insert({
       actor_id: coach.id,
       accion: "inicio_sesion_coach",
-      detalle: { email, coach_id: data.coachId },
+      detalle: { email },
     });
 
-    return {
-      ok: true as const,
-      access_token: sesion.access_token,
-      refresh_token: sesion.refresh_token,
-    };
+    return { ok: true as const };
   });
 
 /** Perfil del usuario autenticado. El rol se lee siempre en el servidor. */
