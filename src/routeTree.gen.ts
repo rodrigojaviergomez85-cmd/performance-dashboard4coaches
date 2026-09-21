@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated/inicio'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
+import { Route as AuthenticatedAdminDesempenoAcademicoRouteImport } from './routes/_authenticated/_admin/desempeno-academico'
+import { Route as AuthenticatedAdminInicioRouteImport } from './routes/_authenticated/_admin/inicio'
+import { Route as AuthenticatedAdminPanelDesempenoRouteImport } from './routes/_authenticated/_admin/panel-desempeno'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +31,68 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
-  id: '/inicio',
-  path: '/inicio',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/_admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminDesempenoAcademicoRoute =
+  AuthenticatedAdminDesempenoAcademicoRouteImport.update({
+    id: '/desempeno-academico',
+    path: '/desempeno-academico',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminInicioRoute =
+  AuthenticatedAdminInicioRouteImport.update({
+    id: '/inicio',
+    path: '/inicio',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPanelDesempenoRoute =
+  AuthenticatedAdminPanelDesempenoRouteImport.update({
+    id: '/panel-desempeno',
+    path: '/panel-desempeno',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/inicio': typeof AuthenticatedInicioRoute
+  '/desempeno-academico': typeof AuthenticatedAdminDesempenoAcademicoRoute
+  '/inicio': typeof AuthenticatedAdminInicioRoute
+  '/panel-desempeno': typeof AuthenticatedAdminPanelDesempenoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/inicio': typeof AuthenticatedInicioRoute
+  '/desempeno-academico': typeof AuthenticatedAdminDesempenoAcademicoRoute
+  '/inicio': typeof AuthenticatedAdminInicioRoute
+  '/panel-desempeno': typeof AuthenticatedAdminPanelDesempenoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/inicio': typeof AuthenticatedInicioRoute
+  '/_authenticated/_admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/_admin/desempeno-academico': typeof AuthenticatedAdminDesempenoAcademicoRoute
+  '/_authenticated/_admin/inicio': typeof AuthenticatedAdminInicioRoute
+  '/_authenticated/_admin/panel-desempeno': typeof AuthenticatedAdminPanelDesempenoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/inicio'
+  fullPaths:
+    '/' | '/auth' | '/desempeno-academico' | '/inicio' | '/panel-desempeno'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/inicio'
-  id: '__root__' | '/' | '/_authenticated' | '/auth' | '/_authenticated/inicio'
+  to: '/' | '/auth' | '/desempeno-academico' | '/inicio' | '/panel-desempeno'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/_admin'
+    | '/_authenticated/_admin/desempeno-academico'
+    | '/_authenticated/_admin/inicio'
+    | '/_authenticated/_admin/panel-desempeno'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,22 +124,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/inicio': {
-      id: '/_authenticated/inicio'
+    '/_authenticated/_admin': {
+      id: '/_authenticated/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/_admin/desempeno-academico': {
+      id: '/_authenticated/_admin/desempeno-academico'
+      path: '/desempeno-academico'
+      fullPath: '/desempeno-academico'
+      preLoaderRoute: typeof AuthenticatedAdminDesempenoAcademicoRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/inicio': {
+      id: '/_authenticated/_admin/inicio'
       path: '/inicio'
       fullPath: '/inicio'
-      preLoaderRoute: typeof AuthenticatedInicioRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof AuthenticatedAdminInicioRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/_admin/panel-desempeno': {
+      id: '/_authenticated/_admin/panel-desempeno'
+      path: '/panel-desempeno'
+      fullPath: '/panel-desempeno'
+      preLoaderRoute: typeof AuthenticatedAdminPanelDesempenoRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminDesempenoAcademicoRoute: typeof AuthenticatedAdminDesempenoAcademicoRoute
+  AuthenticatedAdminInicioRoute: typeof AuthenticatedAdminInicioRoute
+  AuthenticatedAdminPanelDesempenoRoute: typeof AuthenticatedAdminPanelDesempenoRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminDesempenoAcademicoRoute:
+    AuthenticatedAdminDesempenoAcademicoRoute,
+  AuthenticatedAdminInicioRoute: AuthenticatedAdminInicioRoute,
+  AuthenticatedAdminPanelDesempenoRoute: AuthenticatedAdminPanelDesempenoRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedInicioRoute: AuthenticatedInicioRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

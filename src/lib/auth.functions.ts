@@ -130,3 +130,20 @@ export const obtenerPerfil = createServerFn({ method: "GET" })
 
     return { nombre: data.nombre, rol: data.rol };
   });
+
+/** Verifica en el servidor que el usuario autenticado sea administrador. */
+export const verificarAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("coaches")
+      .select("nombre, rol, activo")
+      .eq("auth_user_id", context.userId)
+      .maybeSingle();
+
+    if (error || !data || !data.activo || data.rol !== "admin") {
+      return { ok: false as const };
+    }
+
+    return { ok: true as const, nombre: data.nombre, rol: data.rol };
+  });
