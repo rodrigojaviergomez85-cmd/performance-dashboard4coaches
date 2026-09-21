@@ -24,3 +24,9 @@ Decisiones confirmadas:
 ## Verificado
 - Compilación y tipos sin errores; probado como administrador: /performance-dashboard y /academic-performance cargan sin errores de consola.
 - Falta probar la carga real de archivos QA/DSAT/NL/Abs/Lateness con archivos de ejemplo del usuario.
+
+## Archivos reales (sep 2026)
+- Tablas nuevas según los archivos del usuario: qa_evaluaciones (QA_FINAL), csat_respuestas (CSAT_FINAL, fuente del DSAT), incidencias (INCIDENCIAS). Las anteriores (qa_evals, dsat_evals, abs_incidencias) quedan marcadas como obsoletas.
+- DSAT = (APLICA O NO COACH en blanco y CSAT COACH SCORE <= 8) / (todas con APLICA O NO COACH en blanco). Validado: 100/1896 = 5.27% en el archivo de agosto.
+- QA usa Nota Final y Fecha Monitoreo; las fechas del archivo se leen día/mes/año.
+- Las cargas de QA, DSAT e incidencias reemplazan el rango de fechas seleccionado.

@@ -120,6 +120,12 @@ export function fechaDiaMes(valor: unknown): string | null {
   const t = texto(valor);
   if (t === null) return null;
   const local = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (local) return `${local[3]}-${dosDigitos(Number(local[2]))}-${dosDigitos(Number(local[1]))}`;
+  if (local) {
+    const a = Number(local[1]);
+    const b = Number(local[2]);
+    // Día primero, salvo que el segundo número no pueda ser un mes.
+    const [dia, mes] = b > 12 ? [b, a] : [a, b];
+    return `${local[3]}-${dosDigitos(mes)}-${dosDigitos(dia)}`;
+  }
   return fecha(t);
 }
