@@ -104,3 +104,22 @@ export function rangoMesActual() {
   const f = (x: Date) => `${x.getFullYear()}-${dosDig(x.getMonth() + 1)}-${dosDig(x.getDate())}`;
   return { desde: f(primero), hasta: f(ultimo) };
 }
+
+/**
+ * Fechas de archivos que se escriben día/mes/año. Excel a veces las guarda
+ * invertidas (03/08/2026 como 3 de marzo); cuando el día cabe en un mes se
+ * intercambian para recuperar la fecha real.
+ */
+export function fechaDiaMes(valor: unknown): string | null {
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    const dia = valor.getDate();
+    const mes = valor.getMonth() + 1;
+    if (dia <= 12) return `${valor.getFullYear()}-${dosDigitos(dia)}-${dosDigitos(mes)}`;
+    return fecha(valor);
+  }
+  const t = texto(valor);
+  if (t === null) return null;
+  const local = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (local) return `${local[3]}-${dosDigitos(Number(local[2]))}-${dosDigitos(Number(local[1]))}`;
+  return fecha(t);
+}
