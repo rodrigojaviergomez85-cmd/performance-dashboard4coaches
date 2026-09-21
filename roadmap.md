@@ -20,3 +20,7 @@ Decisiones confirmadas:
 ## Abierto
 - Validación de syllabus/horario contra tablas de referencia: el sitio original la hace contra `syllabi` y `schedules`,
   que aquí no existen ni tienen pantalla de mantenimiento. Por ahora no se valida. Pendiente de confirmar con el usuario.
+
+## Verificado
+- Compilación y tipos sin errores; probado como administrador: /performance-dashboard y /academic-performance cargan sin errores de consola.
+- Falta probar la carga real de archivos QA/DSAT/NL/Abs/Lateness con archivos de ejemplo del usuario.
