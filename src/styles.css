@@ -65,6 +65,12 @@
   --color-bad: var(--bad);
   --color-bad-foreground: var(--bad-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-scorecard-brand: var(--scorecard-brand);
+  --color-scorecard-total: var(--scorecard-total);
+  --color-scorecard-status: var(--scorecard-status);
+  --color-scorecard-link: var(--scorecard-link);
+  --color-scorecard-alert: var(--scorecard-alert);
+  --color-scorecard-alert-foreground: var(--scorecard-alert-foreground);
 }
 
 :root {
@@ -107,6 +113,12 @@
   --great-foreground: oklch(0.2 0.03 85);
   --bad: oklch(0.58 0.2 25);
   --bad-foreground: oklch(0.99 0.005 25);
+  --scorecard-brand: oklch(0.52 0.11 190);
+  --scorecard-total: oklch(0.94 0.035 195);
+  --scorecard-status: oklch(0.47 0.13 143);
+  --scorecard-link: oklch(0.42 0.12 220);
+  --scorecard-alert: oklch(0.93 0.07 125);
+  --scorecard-alert-foreground: oklch(0.43 0.13 125);
 }
 
 .dark {
@@ -148,6 +160,74 @@
   --great-foreground: oklch(0.2 0.03 85);
   --bad: oklch(0.65 0.19 25);
   --bad-foreground: oklch(0.15 0.02 25);
+  --scorecard-brand: oklch(0.72 0.11 190);
+  --scorecard-total: oklch(0.3 0.045 195);
+  --scorecard-status: oklch(0.76 0.15 143);
+  --scorecard-link: oklch(0.72 0.11 220);
+  --scorecard-alert: oklch(0.33 0.07 125);
+  --scorecard-alert-foreground: oklch(0.82 0.14 125);
+}
+
+@utility scorecard-page {
+  @apply mx-auto flex min-h-screen max-w-[1400px] flex-col gap-4 px-4 py-5 sm:px-6;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@utility scorecard-coach-banner {
+  @apply flex items-center gap-4 rounded-md px-5 py-4;
+  background: linear-gradient(100deg, var(--scorecard-brand), var(--foreground));
+}
+
+@utility scorecard-label {
+  @apply text-[10px] font-semibold uppercase text-muted-foreground;
+}
+
+@utility scorecard-month-card {
+  @apply min-h-24 rounded-md border border-border bg-card p-3 shadow-sm;
+}
+
+@utility scorecard-category-card {
+  @apply flex min-h-24 items-center gap-4 rounded-md border border-great bg-great/15 px-4 shadow-sm;
+}
+
+@utility scorecard-award {
+  @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-great text-great-foreground;
+}
+
+@utility scorecard-rank {
+  @apply ml-1 inline-flex rounded-full bg-great px-2 py-0.5 text-[9px] font-bold text-great-foreground;
+}
+
+@utility scorecard-alert-card {
+  @apply min-h-24 rounded-md border border-border bg-card p-3 shadow-sm;
+}
+
+@utility scorecard-lock-card {
+  @apply min-h-28 rounded-md border border-border bg-card p-3 shadow-sm;
+}
+
+@utility scorecard-lock-success {
+  @apply border-scorecard-alert-foreground bg-scorecard-alert/50;
+}
+
+@utility scorecard-lock-warning {
+  @apply border-destructive bg-destructive/5;
+}
+
+@utility scorecard-superstar {
+  --scorecard-status: var(--scorecard-alert-foreground);
+}
+
+@utility scorecard-great {
+  --scorecard-status: var(--great-foreground);
+}
+
+@utility scorecard-bad {
+  --scorecard-status: var(--bad);
+}
+
+@utility scorecard-empty {
+  --scorecard-status: var(--muted-foreground);
 }
 
 @layer base {
