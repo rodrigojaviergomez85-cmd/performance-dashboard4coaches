@@ -1,4 +1,4 @@
-import { entero, fecha, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { entero, fecha, fechaDiaMes, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
 
 export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness";
 
@@ -97,7 +97,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     ],
     busqueda: ["coach_id", "coach", "clave", "gerente"],
     mapear: (fila) => {
-      const f = fecha(primera(fila, ["fecha monitoreo", "fecha ingresado"]));
+      const f = fechaDiaMes(primera(fila, ["fecha monitoreo", "fecha ingresado"]));
       if (!f) return { problema: "Fecha Monitoreo inválida" };
       return {
         registro: {
@@ -113,7 +113,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           nota_final: numero(fila["nota final"]),
           level: texto(fila["level"]),
           horario: normalizarHorario(fila["horario"]),
-          fecha_ingresado: fecha(fila["fecha ingresado"]),
+          fecha_ingresado: fechaDiaMes(fila["fecha ingresado"]),
           type_monitoreo: texto(fila["type monitoreo"]),
           fecha_monitoreo: f,
           evaluating_time: numero(fila["evaluating time"]),
