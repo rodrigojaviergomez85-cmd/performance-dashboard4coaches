@@ -1,3 +1,8 @@
+# Rediseño Performance Dashboard
+- [x] Igualar la estructura, jerarquía y paleta del scorecard de referencia.
+- [x] Conservar DSAT, comentarios CSAT, QA, incidencias, tardanzas y NL.
+- [x] Eliminar únicamente Liable Complaints.
+
 # Roadmap — Academic Performance y Performance Dashboard
 
 Decisiones confirmadas:

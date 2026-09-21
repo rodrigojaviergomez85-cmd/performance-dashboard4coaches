@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Award, Info, Moon, Sparkles, Sun } from "lucide-react";
 import {
   comentariosCsat,
   detalleQa,
@@ -9,9 +10,7 @@ import {
   panelDesempeno,
 } from "@/lib/performance.functions";
 import { SelectorBuscable } from "@/components/selector-buscable";
-import { EtiquetaCategoria, Tarjeta } from "@/components/panel/tarjetas";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -28,20 +26,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/_portal/performance-dashboard")({
   head: () => ({
     meta: [
       { title: "Performance Dashboard | Portal de Coaches E4CC" },
-      {
-        name: "description",
-        content: "Resultados de satisfacción, QA, ausencias y tardanzas por trimestre.",
-      },
+      { name: "description", content: "Scorecard trimestral de desempeño para coaches E4CC." },
       { property: "og:title", content: "Performance Dashboard | Portal de Coaches E4CC" },
-      {
-        property: "og:description",
-        content: "Resultados de satisfacción, QA, ausencias y tardanzas por trimestre.",
-      },
+      { property: "og:description", content: "Scorecard trimestral de desempeño para coaches E4CC." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -51,303 +44,263 @@ export const Route = createFileRoute("/_authenticated/_portal/performance-dashbo
 
 const ahora = new Date();
 const ANIOS = [ahora.getUTCFullYear(), ahora.getUTCFullYear() - 1, ahora.getUTCFullYear() - 2];
+const MESES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const porcentaje = (v: number | null) => (v === null ? "—" : `${v.toFixed(2)}%`);
+const porcentaje = (valor: number | null) => (valor === null ? "—" : `${valor.toFixed(2)}%`);
+const iniciales = (nombre: string) =>
+  nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0])
+    .join("")
+    .toUpperCase();
+
+function estadoCategoria(categoria: string | null) {
+  if (categoria === "SUPERSTAR") return "scorecard-superstar";
+  if (categoria === "GREAT") return "scorecard-great";
+  if (categoria === "BAD") return "scorecard-bad";
+  return "scorecard-empty";
+}
+
+function TarjetaMes({ mes }: { mes: any }) {
+  return (
+    <div className={cn("scorecard-month-card", estadoCategoria(mes.categoria))}>
+      <p className="scorecard-label">{mes.etiqueta}</p>
+      <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{porcentaje(mes.porcentaje)}</p>
+      <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">
+        {mes.categoria ?? "No data"}
+      </p>
+      <p className="mt-3 text-[10px] text-muted-foreground">
+        {mes.denominador ? `${mes.numerador} / ${mes.denominador} = ${porcentaje(mes.porcentaje)}` : "0 / 0"}
+      </p>
+    </div>
+  );
+}
+
+function TarjetaLock({
+  titulo,
+  valor,
+  sufijo,
+  nota,
+  accion,
+  tono,
+}: {
+  titulo: string;
+  valor: string;
+  sufijo?: string;
+  nota: string;
+  accion?: () => void;
+  tono?: "success" | "warning";
+}) {
+  return (
+    <div className={cn("scorecard-lock-card", tono === "success" && "scorecard-lock-success", tono === "warning" && "scorecard-lock-warning")}>
+      <div className="flex items-center justify-between">
+        <p className="scorecard-label">{titulo}</p>
+        <Info className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+      </div>
+      <div className="mt-3 text-center">
+        <span className="text-3xl font-bold tabular-nums text-foreground">{valor}</span>
+        {sufijo && <span className="ml-1 text-xs text-muted-foreground">{sufijo}</span>}
+      </div>
+      <p className="mt-3 text-center text-[10px] text-muted-foreground">{nota}</p>
+      {accion && (
+        <Button variant="link" size="sm" onClick={accion} className="mt-1 h-auto p-0 text-xs text-scorecard-link">
+          View details <span aria-hidden="true">→</span>
+        </Button>
+      )}
+    </div>
+  );
+}
 
 function PerformanceDashboard() {
   const panel = useServerFn(panelDesempeno);
   const directorio = useServerFn(directorioCoaches);
   const comentarios = useServerFn(comentariosCsat);
   const qaDetalle = useServerFn(detalleQa);
-
   const [coachId, setCoachId] = useState<number | null>(null);
   const [year, setYear] = useState(ahora.getUTCFullYear());
   const [quarter, setQuarter] = useState(Math.floor(ahora.getUTCMonth() / 3) + 1);
-  const [busquedaComentario, setBusquedaComentario] = useState("");
+  const [mes, setMes] = useState<number | null>(null);
+  const [syllabus, setSyllabus] = useState<string | null>(null);
+  const [clase, setClase] = useState<string | null>(null);
+  const [vistaAnual, setVistaAnual] = useState(false);
+  const [mostrarQa, setMostrarQa] = useState(false);
 
   const argumentos = { coachId, year, quarter };
-
-  const { data: coaches = [] } = useQuery({
-    queryKey: ["directorio-coaches"],
-    queryFn: () => directorio(),
-  });
-
+  const { data: coaches = [] } = useQuery({ queryKey: ["directorio-coaches"], queryFn: () => directorio() });
   const { data, isLoading, error } = useQuery({
     queryKey: ["panel", coachId, year, quarter],
     queryFn: () => panel({ data: argumentos }),
   });
-
   const { data: csat } = useQuery({
-    queryKey: ["csat", coachId, year, quarter, busquedaComentario],
-    queryFn: () =>
-      comentarios({ data: { ...argumentos, texto: busquedaComentario.trim() || null } }),
+    queryKey: ["csat", coachId, year, quarter, mes, syllabus, clase],
+    queryFn: () => comentarios({ data: { ...argumentos, mes, syllabus, clase, texto: null } }),
   });
-
   const { data: qa } = useQuery({
     queryKey: ["qa-detalle", coachId, year, quarter],
     queryFn: () => qaDetalle({ data: argumentos }),
   });
 
+  const mesesTexto = useMemo(() => {
+    const inicio = (quarter - 1) * 3;
+    return MESES.slice(inicio, inicio + 3).join(", ");
+  }, [quarter]);
+
   if (error) {
-    return (
-      <section className="px-8 py-10">
-        <p className="text-sm text-destructive">No se pudo cargar el panel: {error.message}</p>
-      </section>
-    );
+    return <section className="p-8 text-sm text-destructive">No se pudo cargar el panel: {error.message}</section>;
   }
 
-  const diferenciaTardanzas =
-    data && data.tardanzasPrevias > 0
-      ? data.tardanzas - data.tardanzasPrevias
-      : null;
+  if (isLoading || !data) {
+    return <section className="p-8 text-sm text-muted-foreground">Cargando scorecard…</section>;
+  }
+
+  const diferencia = data.tardanzas - data.tardanzasPrevias;
+  const categoria = data.trimestre.categoria;
+  const allClear = !data.qa.bloqueado && data.incidencias < 3;
 
   return (
-    <section className="mx-auto max-w-6xl space-y-6 px-6 py-10">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <section className="scorecard-page">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Performance Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
-            {data ? `${data.coach.nombre} · Coach ${data.coach.coach_id}` : "Cargando…"}
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-scorecard-brand" />
+            <h1 className="text-sm font-bold text-foreground">Coach Scorecard</h1>
+          </div>
+          <p className="mt-1 text-[10px] uppercase text-muted-foreground">Coach Performance</p>
         </div>
-
-        <div className="flex flex-wrap items-end gap-3">
-          {data?.puedeElegirCoach && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Coach</Label>
-              <SelectorBuscable
-                opciones={coaches.map((c) => ({
-                  valor: String(c.coach_id),
-                  etiqueta: `${c.nombre} (${c.coach_id})`,
-                }))}
-                valor={coachId === null ? "" : String(coachId)}
-                alElegir={(v) => setCoachId(v ? Number(v) : null)}
-                marcador="Elegir coach"
-              />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => document.documentElement.classList.toggle("dark")} aria-label="Cambiar tema">
+            <Moon className="h-4 w-4 dark:hidden" />
+            <Sun className="hidden h-4 w-4 dark:block" />
+          </Button>
+          <Button variant="outline" onClick={() => setVistaAnual((actual) => !actual)}>
+            {vistaAnual ? `Q${quarter} View` : "Full Year View"}
+          </Button>
+          {data.puedeElegirCoach ? (
+            <SelectorBuscable
+              opciones={coaches.map((coach) => ({ valor: String(coach.coach_id), etiqueta: coach.nombre }))}
+              valor={coachId === null ? "" : String(coachId)}
+              alElegir={(valor) => setCoachId(valor ? Number(valor) : null)}
+              marcador={data.coach.nombre}
+            />
+          ) : (
+            <div className="rounded-full border border-border bg-card px-5 py-2 text-xs font-semibold uppercase text-foreground">
+              {data.coach.nombre}
             </div>
           )}
+        </div>
+      </header>
 
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Año</Label>
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="h-9 w-28 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ANIOS.map((a) => (
-                  <SelectItem key={a} value={String(a)}>
-                    {a}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Trimestre</Label>
-            <Select value={String(quarter)} onValueChange={(v) => setQuarter(Number(v))}>
-              <SelectTrigger className="h-9 w-28 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4].map((q) => (
-                  <SelectItem key={q} value={String(q)}>
-                    Q{q}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="scorecard-coach-banner">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary-foreground/30 bg-primary-foreground/10 text-sm font-bold text-primary-foreground">
+          {iniciales(data.coach.nombre)}
+        </div>
+        <div>
+          <p className="text-lg font-bold uppercase text-primary-foreground">{data.coach.nombre}</p>
+          <p className="text-xs text-primary-foreground/80">{data.coach.tenure ?? `Coach ${data.coach.coach_id}`}</p>
         </div>
       </div>
 
-      {isLoading || !data ? (
-        <p className="text-sm text-muted-foreground">Cargando resultados…</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-sm font-bold text-foreground">DSAT — Q{quarter} {year}</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">{mesesTexto} · drives your Q{quarter === 4 ? 1 : quarter + 1} CSAT Category</span>
+          <Select value={String(year)} onValueChange={(valor) => setYear(Number(valor))}>
+            <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{ANIOS.map((anio) => <SelectItem key={anio} value={String(anio)}>{anio}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={String(quarter)} onValueChange={(valor) => setQuarter(Number(valor))}>
+            <SelectTrigger className="h-7 w-16 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>{[1, 2, 3, 4].map((q) => <SelectItem key={q} value={String(q)}>Q{q}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {vistaAnual ? (
+        <div className="overflow-x-auto rounded-md border border-border bg-card">
+          <Table className="text-xs">
+            <TableHeader><TableRow className="bg-muted/60"><TableHead>Month</TableHead><TableHead>DSAT</TableHead><TableHead>Category</TableHead><TableHead>QA</TableHead><TableHead>Incidencias</TableHead><TableHead>Lateness</TableHead><TableHead>NL</TableHead></TableRow></TableHeader>
+            <TableBody>{data.anual.map((fila) => <TableRow key={fila.mes}><TableCell>{fila.etiqueta}</TableCell><TableCell>{porcentaje(fila.dsat)}</TableCell><TableCell>{fila.categoria ?? "NO DATA"}</TableCell><TableCell>{fila.qaFrase ?? "—"}</TableCell><TableCell>{fila.incidencias}</TableCell><TableCell>{fila.tardanzas}</TableCell><TableCell>{porcentaje(fila.nl)}</TableCell></TableRow>)}</TableBody>
+          </Table>
+        </div>
       ) : (
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,1fr)_minmax(220px,.85fr)]">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {data.meses.map((item) => <TarjetaMes key={item.mes} mes={item} />)}
+            <div className={cn("scorecard-month-card border-scorecard-brand bg-scorecard-total", estadoCategoria(categoria))}>
+              <p className="scorecard-label">Q{quarter} Total</p>
+              <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{porcentaje(data.trimestre.porcentaje)}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{categoria ?? "No data"}</p>
+              <p className="mt-3 text-[10px] text-muted-foreground">{data.trimestre.numerador} / {data.trimestre.denominador} = {porcentaje(data.trimestre.porcentaje)}</p>
+            </div>
+          </div>
+
+          <div className={cn("scorecard-category-card", estadoCategoria(categoria))}>
+            <div className="scorecard-award"><Award className="h-5 w-5" /></div>
+            <div>
+              <p className="scorecard-label">Q{quarter} {year} → Q{quarter === 4 ? 1 : quarter + 1} <span className="scorecard-rank">★ TOP PERFORMER</span></p>
+              <p className="mt-2 text-2xl font-bold text-foreground">{categoria ?? "NO DATA"}</p>
+            </div>
+          </div>
+
+          <div className="scorecard-alert-card">
+            <p className="scorecard-label">Alerts</p>
+            <div className={cn("mt-2 flex items-center gap-2 rounded px-2 py-1 text-[11px]", allClear ? "bg-scorecard-alert text-scorecard-alert-foreground" : "bg-destructive/10 text-destructive")}>
+              <Sparkles className="h-3.5 w-3.5" />
+              {allClear ? "All clear — great shape." : "Review the locks below."}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!vistaAnual && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {data.meses.map((m) => (
-              <Tarjeta
-                key={m.mes}
-                titulo={m.etiqueta}
-                valor={porcentaje(m.porcentaje)}
-                detalle={
-                  m.denominador === 0
-                    ? "Sin encuestas que cuenten"
-                    : `${m.numerador} de ${m.denominador} insatisfechas`
-                }
-                pie={<EtiquetaCategoria valor={m.categoria} />}
-              />
-            ))}
-            <Tarjeta
-              destacado
-              titulo={`Trimestre Q${data.quarter}`}
-              valor={porcentaje(data.trimestre.porcentaje)}
-              detalle={
-                data.trimestre.denominador === 0
-                  ? "Sin encuestas que cuenten"
-                  : `${data.trimestre.numerador} de ${data.trimestre.denominador} insatisfechas`
-              }
-              pie={<EtiquetaCategoria valor={data.trimestre.categoria} />}
-            />
+          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
+            <h2 className="text-sm font-bold text-foreground">CSAT Comments</h2>
+            <p className="text-[10px] text-muted-foreground">What parents & students are saying — every DSAT survey this quarter</p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3 shadow-sm">
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Select value={mes === null ? "all" : String(mes)} onValueChange={(valor) => setMes(valor === "all" ? null : Number(valor))}>
+                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All months</SelectItem>{data.meses.map((item) => <SelectItem key={item.mes} value={String(item.mes)}>{item.etiqueta}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={syllabus ?? "all"} onValueChange={(valor) => setSyllabus(valor === "all" ? null : valor)}>
+                <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All syllabuses" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+              </Select>
+              <Select value={clase ?? "all"} onValueChange={(valor) => setClase(valor === "all" ? null : valor)}>
+                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="All classes" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All classes</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+              </Select>
+              <div className="flex h-8 items-center rounded-md border border-border px-3 text-[11px] text-foreground">Showing {(csat?.filas ?? []).length} of {csat?.total ?? 0} records</div>
+            </div>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[850px] text-[11px]">
+                <TableHeader><TableRow className="bg-muted/70"><TableHead>Month</TableHead><TableHead>Syllabus</TableHead><TableHead>Class ID</TableHead><TableHead>Experience Comment</TableHead><TableHead>Coach Score</TableHead><TableHead>Coach Comment</TableHead><TableHead>Counts?</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader>
+                <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.status === "Aplica a coach" ? "Yes" : "No"}</TableCell><TableCell>{fila.razon_no_cuenta ?? "—"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">No comments match these filters.</TableCell></TableRow>}</TableBody>
+              </Table>
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">Struck-through rows were reviewed one-by-one and excluded from DSAT — the reason is shown.</p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Tarjeta
-              titulo="QA"
-              valor={data.qa.frase ?? "—"}
-              detalle={
-                data.qa.bloqueado
-                  ? "Promedio bajo el mínimo: categoría bloqueada"
-                  : data.qa.advertencia
-                    ? "Promedio cerca del mínimo"
-                    : data.qa.rango
-                      ? `Rango ${data.qa.rango} de 5`
-                      : "Sin evaluaciones"
-              }
-            />
-            <Tarjeta
-              titulo="Incidencias"
-              valor={String(data.incidencias)}
-              detalle="Días con ausencia aplicable"
-            />
-            <Tarjeta
-              titulo="Tardanzas"
-              valor={String(data.tardanzas)}
-              detalle={
-                diferenciaTardanzas === null
-                  ? "Sin trimestre previo para comparar"
-                  : diferenciaTardanzas === 0
-                    ? "Igual que el trimestre anterior"
-                    : diferenciaTardanzas > 0
-                      ? `${diferenciaTardanzas} más que el trimestre anterior`
-                      : `${Math.abs(diferenciaTardanzas)} menos que el trimestre anterior`
-              }
-            />
-            <Tarjeta
-              titulo="NL"
-              valor={porcentaje(data.nl)}
-              detalle="Aprobadas sobre evaluadas"
-            />
+          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
+            <h2 className="text-sm font-bold text-foreground">Locks</h2>
+            <p className="text-[10px] text-muted-foreground">These drive whether your CSAT Category pays out</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.bloqueado ? "Below minimum locks Category" : "Below minimum locks Category"} accion={() => setMostrarQa((actual) => !actual)} tono={data.qa.bloqueado ? "warning" : "success"} />
+            <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Locks Category at >3" {...(data.incidencias > 3 ? { tono: "warning" as const } : {})} />
+            <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
+            <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota="≥70% boosts to SUPERSTAR" {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 
-          <Tabs defaultValue="anual" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="anual">Resumen anual</TabsTrigger>
-              <TabsTrigger value="csat">Comentarios CSAT</TabsTrigger>
-              <TabsTrigger value="qa">Detalle QA</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="anual">
-              <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                <Table className="text-sm">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Mes</TableHead>
-                      <TableHead className="text-right">DSAT</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>QA</TableHead>
-                      <TableHead className="text-right">Incidencias</TableHead>
-                      <TableHead className="text-right">Tardanzas</TableHead>
-                      <TableHead className="text-right">NL</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.anual.map((m) => (
-                      <TableRow key={m.mes}>
-                        <TableCell>{m.etiqueta}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {porcentaje(m.dsat)}
-                        </TableCell>
-                        <TableCell>
-                          <EtiquetaCategoria valor={m.categoria} />
-                        </TableCell>
-                        <TableCell>{m.qaFrase ?? "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums">{m.incidencias}</TableCell>
-                        <TableCell className="text-right tabular-nums">{m.tardanzas}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {porcentaje(m.nl)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="csat" className="space-y-3">
-              <Input
-                placeholder="Buscar en los comentarios"
-                value={busquedaComentario}
-                onChange={(e) => setBusquedaComentario(e.target.value)}
-                className="h-9 w-72 text-sm"
-              />
-              <div className="space-y-3">
-                {(csat?.filas ?? []).length === 0 ? (
-                  <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                    Sin comentarios en este trimestre.
-                  </p>
-                ) : (
-                  (csat?.filas ?? []).map((f: any) => (
-                    <div key={f.id} className="rounded-xl border border-border bg-card p-4">
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        <span>{String(f.period_month).slice(0, 7)}</span>
-                        <span>Clase {f.class_id ?? "—"}</span>
-                        <span>{f.syllabus ?? "—"}</span>
-                        <span>Nota {f.coach_score ?? "—"}</span>
-                        <span>{f.status ?? "—"}</span>
-                      </div>
-                      {f.experience_comment && (
-                        <p className="mt-2 text-sm text-foreground">{f.experience_comment}</p>
-                      )}
-                      {f.coach_comment && (
-                        <p className="mt-2 text-sm text-muted-foreground">{f.coach_comment}</p>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="qa">
-              <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                <Table className="text-sm">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Clase</TableHead>
-                      <TableHead>Syllabus</TableHead>
-                      <TableHead>Nivel</TableHead>
-                      <TableHead>Horario</TableHead>
-                      <TableHead>Evaluador</TableHead>
-                      <TableHead>Resultado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(qa?.filas ?? []).length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                          Sin evaluaciones en este trimestre.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      (qa?.filas ?? []).map((f: any) => (
-                        <TableRow key={f.id}>
-                          <TableCell>{f.fecha}</TableCell>
-                          <TableCell>{f.clase ?? "—"}</TableCell>
-                          <TableCell>{f.syllabus ?? "—"}</TableCell>
-                          <TableCell>{f.level ?? "—"}</TableCell>
-                          <TableCell>{f.schedule ?? "—"}</TableCell>
-                          <TableCell>{f.evaluador ?? "—"}</TableCell>
-                          <TableCell>{f.frase ?? "—"}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
+          {mostrarQa && (
+            <div className="overflow-x-auto rounded-md border border-border bg-card">
+              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{(qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "—"}</TableCell></TableRow>)}</TableBody></Table>
+            </div>
+          )}
         </>
       )}
     </section>
