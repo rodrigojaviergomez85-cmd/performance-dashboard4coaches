@@ -214,7 +214,7 @@ export const cargarAcademico = createServerFn({ method: "POST" })
     let insertadas = 0;
     for (let i = 0; i < unicas.length; i += 500) {
       const lote = unicas.slice(i, i + 500);
-      const { error } = await supabaseAdmin.from(cfg.nombre).insert(lote);
+      const { error } = await (supabaseAdmin.from(cfg.nombre) as any).insert(lote);
       if (error) throw new Error(error.message);
       insertadas += lote.length;
     }
@@ -264,8 +264,7 @@ export const actualizarApplicable = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const cfg = TABLAS[data.tabla as ClaveTabla];
 
-    const { error } = await supabaseAdmin
-      .from(cfg.nombre)
+    const { error } = await (supabaseAdmin.from(cfg.nombre) as any)
       .update({ applicable: data.valor })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
