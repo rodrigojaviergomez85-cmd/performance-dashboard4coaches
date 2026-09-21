@@ -117,7 +117,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   const applicable = useMutation({
     mutationFn: (v: { id: string; valor: number }) =>
       cambiarApplicable({
-        data: { tabla: config.clave as "qa" | "dsat" | "abs", id: v.id, valor: v.valor },
+        data: { tabla: config.clave as "qa" | "abs", id: v.id, valor: v.valor },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["academico", config.clave] }),
     onError: (e: Error) => toast.error(e.message),

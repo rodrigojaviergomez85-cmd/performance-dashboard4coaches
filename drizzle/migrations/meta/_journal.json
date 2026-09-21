@@ -36,6 +36,13 @@
       "when": 1790012569563,
       "tag": "0004_academic_performance_tablas",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790013630123,
+      "tag": "0005_tablas_academicas_segun_archivos",
+      "breakpoints": true
     }
   ]
 }
