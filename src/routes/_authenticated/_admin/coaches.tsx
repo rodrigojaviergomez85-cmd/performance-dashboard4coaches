@@ -104,30 +104,43 @@ function PaginaCoaches() {
     setError(null);
 
     try {
-      const libro = XLSX.read(await archivo.arrayBuffer(), { type: "array" });
+      const datos = new Uint8Array(await archivo.arrayBuffer());
+      const libro = XLSX.read(datos, { type: "array" });
       const hoja = libro.Sheets[libro.SheetNames[0]!]!;
       const crudas = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, {
         defval: null,
       });
 
+      // Los encabezados se comparan sin acentos ni mayúsculas.
+      const clave = (t: string) =>
+        t
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim()
+          .toLowerCase();
+
       const filas: FilaCarga[] = [];
-      for (const fila of crudas) {
-        const coachId = entero(fila["Id Coach"]);
-        const nombre = texto(fila["Coach"]);
+      for (const cruda of crudas) {
+        const fila: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(cruda)) fila[clave(k)] = v;
+
+        const coachId = entero(fila["id coach"]);
+        const nombre = texto(fila["coach"]);
         if (coachId === null || !nombre) continue;
         filas.push({
           coach_id: coachId,
           nombre,
-          email: texto(fila["Correo Coach"]) ?? "",
-          pais: texto(fila["País"] ?? fila["Pais"]),
-          sucursal: texto(fila["Sucursal"]),
-          id_coordinador: entero(fila["Id Coordinador"]),
-          coordinador: texto(fila["Coordinador"]),
-          estado: texto(fila["Estado"]),
-          categoria: texto(fila["Categoría"] ?? fila["Categoria"]),
-          tenure: texto(fila["Tenure"]),
+          email: texto(fila["correo coach"]) ?? "",
+          pais: texto(fila["pais"]),
+          sucursal: texto(fila["sucursal"]),
+          id_coordinador: entero(fila["id coordinador"]),
+          coordinador: texto(fila["coordinador"]),
+          estado: texto(fila["estado"]),
+          categoria: texto(fila["categoria"]),
+          tenure: texto(fila["tenure"]),
         });
       }
+
 
       if (filas.length === 0) {
         setError("El archivo no contiene columnas Id Coach y Coach con datos.");
