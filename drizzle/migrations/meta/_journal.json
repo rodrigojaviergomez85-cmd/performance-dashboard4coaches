@@ -15,6 +15,13 @@
       "when": 1788477873088,
       "tag": "0001_restringir_ejecucion_tiene_rol",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790009342780,
+      "tag": "0002_admin_e4cc_y_coach_login",
+      "breakpoints": true
     }
   ]
 }

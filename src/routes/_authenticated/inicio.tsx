@@ -9,15 +9,15 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/_authenticated/inicio")({
   head: () => ({
     meta: [
-      { title: "Inicio | Portal de Coaches English4Kids" },
+      { title: "Inicio | Portal de Coaches E4CC" },
       {
         name: "description",
-        content: "Panel interno de coaches de English4Kids.",
+        content: "Panel interno de coaches E4CC.",
       },
-      { property: "og:title", content: "Inicio | Portal de Coaches English4Kids" },
+      { property: "og:title", content: "Inicio | Portal de Coaches E4CC" },
       {
         property: "og:description",
-        content: "Panel interno de coaches de English4Kids.",
+        content: "Panel interno de coaches E4CC.",
       },
     ],
   }),
@@ -45,7 +45,7 @@ function Inicio() {
     <main className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <span className="text-sm font-semibold tracking-tight text-foreground">
-          Portal de Coaches English4Kids
+          Portal de Coaches E4CC
         </span>
         <div className="flex items-center gap-2">
           <AlternadorTema />

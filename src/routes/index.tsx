@@ -5,16 +5,16 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Portal de Coaches English4Kids" },
+      { title: "Portal de Coaches E4CC" },
       {
         name: "description",
         content:
-          "Acceso interno para coaches de English4Kids: encuestas de satisfacción y categoría de pago.",
+          "Acceso interno para coaches E4CC: encuestas de satisfacción y categoría de pago.",
       },
-      { property: "og:title", content: "Portal de Coaches English4Kids" },
+      { property: "og:title", content: "Portal de Coaches E4CC" },
       {
         property: "og:description",
-        content: "Acceso interno para coaches de English4Kids.",
+        content: "Acceso interno para coaches E4CC.",
       },
     ],
   }),
