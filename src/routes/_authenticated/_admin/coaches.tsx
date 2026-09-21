@@ -107,9 +107,26 @@ function PaginaCoaches() {
       const datos = new Uint8Array(await archivo.arrayBuffer());
       const libro = XLSX.read(datos, { type: "array" });
       const hoja = libro.Sheets[libro.SheetNames[0]!]!;
+
+      // Algunos archivos declaran un rango incorrecto; se recalcula con las celdas reales.
+      let maxFila = 0;
+      let maxCol = 0;
+      for (const direccion of Object.keys(hoja)) {
+        if (direccion.startsWith("!")) continue;
+        const celda = XLSX.utils.decode_cell(direccion);
+        if (celda.r > maxFila) maxFila = celda.r;
+        if (celda.c > maxCol) maxCol = celda.c;
+      }
+      hoja["!ref"] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: maxFila, c: maxCol },
+      });
+
       const crudas = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, {
         defval: null,
       });
+
+
 
       // Los encabezados se comparan sin acentos ni mayúsculas.
       const clave = (t: string) =>
