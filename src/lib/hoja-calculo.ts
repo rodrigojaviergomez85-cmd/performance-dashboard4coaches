@@ -133,11 +133,41 @@ export function rangoMesActual() {
  * invertidas (03/08/2026 como 3 de marzo); cuando el día cabe en un mes se
  * intercambian para recuperar la fecha real.
  */
-export function fechaDiaMes(valor: unknown): string | null {
+const MESES: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
+
+export function fechaDiaMes(valor: unknown, mesEsperado?: unknown): string | null {
   if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
     const dia = valor.getDate();
     const mes = valor.getMonth() + 1;
-    if (dia <= 12) return `${valor.getFullYear()}-${dosDigitos(dia)}-${dosDigitos(mes)}`;
+    const esperado = MESES[String(mesEsperado ?? "").trim().toLowerCase()];
+    if (esperado && mes !== esperado && dia === esperado && mes <= 12) {
+      return `${valor.getFullYear()}-${dosDigitos(dia)}-${dosDigitos(mes)}`;
+    }
     return fecha(valor);
   }
   const t = texto(valor);
