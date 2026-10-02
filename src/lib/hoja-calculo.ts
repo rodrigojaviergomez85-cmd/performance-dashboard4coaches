@@ -9,11 +9,34 @@ export const claveEncabezado = (t: string) =>
     .trim()
     .toLowerCase();
 
-/** Lee la primera hoja de un archivo y devuelve filas con encabezados normalizados. */
-export async function leerHoja(archivo: File): Promise<Record<string, unknown>[]> {
+/** Lee la hoja que contiene los encabezados requeridos, o la primera si no se indican. */
+export async function leerHoja(
+  archivo: File,
+  encabezadosRequeridos: string[] = [],
+): Promise<Record<string, unknown>[]> {
   const datos = new Uint8Array(await archivo.arrayBuffer());
   const libro = XLSX.read(datos, { type: "array", cellDates: true });
-  const hoja = libro.Sheets[libro.SheetNames[0]!]!;
+
+  const hoja = libro.SheetNames.map((nombre) => libro.Sheets[nombre]).find((candidata) => {
+    if (!candidata) return false;
+    if (!encabezadosRequeridos.length) return true;
+    const primeraFila = XLSX.utils.sheet_to_json<unknown[]>(candidata, {
+      header: 1,
+      range: 0,
+      blankrows: false,
+    })[0];
+    if (!primeraFila) return false;
+    const disponibles = new Set(primeraFila.map((valor) => claveEncabezado(String(valor ?? ""))));
+    return encabezadosRequeridos.every((encabezado) =>
+      disponibles.has(claveEncabezado(encabezado)),
+    );
+  });
+
+  if (!hoja) {
+    throw new Error(
+      `No se encontró una hoja con las columnas requeridas: ${encabezadosRequeridos.join(", ")}.`,
+    );
+  }
 
   // Algunos archivos declaran un rango incorrecto; se recalcula con las celdas reales.
   let maxFila = 0;
@@ -110,11 +133,41 @@ export function rangoMesActual() {
  * invertidas (03/08/2026 como 3 de marzo); cuando el día cabe en un mes se
  * intercambian para recuperar la fecha real.
  */
-export function fechaDiaMes(valor: unknown): string | null {
+const MESES: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
+
+export function fechaDiaMes(valor: unknown, mesEsperado?: unknown): string | null {
   if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
     const dia = valor.getDate();
     const mes = valor.getMonth() + 1;
-    if (dia <= 12) return `${valor.getFullYear()}-${dosDigitos(dia)}-${dosDigitos(mes)}`;
+    const esperado = MESES[String(mesEsperado ?? "").trim().toLowerCase()];
+    if (esperado && mes !== esperado && dia === esperado && mes <= 12) {
+      return `${valor.getFullYear()}-${dosDigitos(dia)}-${dosDigitos(mes)}`;
+    }
     return fecha(valor);
   }
   const t = texto(valor);

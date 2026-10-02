@@ -30,6 +30,7 @@ export interface ConfigPestana {
   requiereMes?: boolean;
   requiereToken?: boolean;
   reemplazarRango?: boolean;
+  encabezadosRequeridos?: string[];
   /** Convierte una fila del archivo en un registro guardable. */
   mapear: (fila: Record<string, unknown>, extra: Extra) => ResultadoFila;
   /** Agrupa las filas ya mapeadas (solo lo usa Lateness). */
@@ -63,6 +64,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     aceptar: ".csv,.xls,.xlsx",
     applicable: true,
     reemplazarRango: true,
+    encabezadosRequeridos: ["CLAVE", "Id Coach", "Nota Final", "Fecha Monitoreo", "Type QA"],
     columnas: [
       { clave: "fecha_monitoreo", etiqueta: "Fecha Monitoreo" },
       { clave: "month", etiqueta: "Month" },
@@ -97,7 +99,11 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     ],
     busqueda: ["coach_id", "coach", "clave", "gerente"],
     mapear: (fila) => {
-      const f = fechaDiaMes(primera(fila, ["fecha monitoreo", "fecha ingresado"]));
+      const mesArchivo = fila["month"];
+      const f = fechaDiaMes(
+        primera(fila, ["fecha monitoreo", "fecha ingresado"]),
+        mesArchivo,
+      );
       if (!f) return { problema: "Fecha Monitoreo inválida" };
       return {
         registro: {
@@ -113,13 +119,13 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           nota_final: numero(fila["nota final"]),
           level: texto(fila["level"]),
           horario: normalizarHorario(fila["horario"]),
-          fecha_ingresado: fechaDiaMes(fila["fecha ingresado"]),
+          fecha_ingresado: fechaDiaMes(fila["fecha ingresado"], mesArchivo),
           type_monitoreo: texto(fila["type monitoreo"]),
           fecha_monitoreo: f,
           evaluating_time: numero(fila["evaluating time"]),
           area_mejora: texto(fila["area de mejora"]),
           type_qa: texto(fila["type qa"]),
-          gerente2: texto(fila["gerente2"]),
+          gerente2: texto(primera(fila, ["gerente2", "gerente.1", "gerente_1"])),
           nota_suc: numero(fila["nota suc"]),
           feedback_type: texto(fila["feedback type"]),
           comentario: texto(fila["comentario"]),
