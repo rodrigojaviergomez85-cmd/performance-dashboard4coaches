@@ -9,11 +9,34 @@ export const claveEncabezado = (t: string) =>
     .trim()
     .toLowerCase();
 
-/** Lee la primera hoja de un archivo y devuelve filas con encabezados normalizados. */
-export async function leerHoja(archivo: File): Promise<Record<string, unknown>[]> {
+/** Lee la hoja que contiene los encabezados requeridos, o la primera si no se indican. */
+export async function leerHoja(
+  archivo: File,
+  encabezadosRequeridos: string[] = [],
+): Promise<Record<string, unknown>[]> {
   const datos = new Uint8Array(await archivo.arrayBuffer());
   const libro = XLSX.read(datos, { type: "array", cellDates: true });
-  const hoja = libro.Sheets[libro.SheetNames[0]!]!;
+
+  const hoja = libro.SheetNames.map((nombre) => libro.Sheets[nombre]).find((candidata) => {
+    if (!candidata) return false;
+    if (!encabezadosRequeridos.length) return true;
+    const primeraFila = XLSX.utils.sheet_to_json<unknown[]>(candidata, {
+      header: 1,
+      range: 0,
+      blankrows: false,
+    })[0];
+    if (!primeraFila) return false;
+    const disponibles = new Set(primeraFila.map((valor) => claveEncabezado(String(valor ?? ""))));
+    return encabezadosRequeridos.every((encabezado) =>
+      disponibles.has(claveEncabezado(encabezado)),
+    );
+  });
+
+  if (!hoja) {
+    throw new Error(
+      `No se encontró una hoja con las columnas requeridas: ${encabezadosRequeridos.join(", ")}.`,
+    );
+  }
 
   // Algunos archivos declaran un rango incorrecto; se recalcula con las celdas reales.
   let maxFila = 0;

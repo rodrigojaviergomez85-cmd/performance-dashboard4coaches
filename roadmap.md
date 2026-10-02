@@ -35,3 +35,4 @@ Decisiones confirmadas:
 - DSAT = (APLICA O NO COACH en blanco y CSAT COACH SCORE <= 8) / (todas con APLICA O NO COACH en blanco). Validado: 100/1896 = 5.27% en el archivo de agosto.
 - QA usa Nota Final y Fecha Monitoreo; las fechas del archivo se leen día/mes/año.
 - Las cargas de QA, DSAT e incidencias reemplazan el rango de fechas seleccionado.
+- El archivo QA puede incluir varias hojas; la carga localiza automáticamente la hoja mensual con CLAVE, Id Coach, Nota Final, Fecha Monitoreo y Type QA. Validado con QA_FINAL_JUNIO_2026.xlsx.

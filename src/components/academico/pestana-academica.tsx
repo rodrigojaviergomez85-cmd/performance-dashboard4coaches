@@ -129,7 +129,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
     if (!archivo) return;
 
     try {
-      const crudas = await leerHoja(archivo);
+      const crudas = await leerHoja(archivo, config.encabezadosRequeridos);
       const registros: Record<string, unknown>[] = [];
       const problemas: string[] = [];
 

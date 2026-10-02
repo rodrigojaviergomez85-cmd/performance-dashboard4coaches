@@ -30,6 +30,7 @@ export interface ConfigPestana {
   requiereMes?: boolean;
   requiereToken?: boolean;
   reemplazarRango?: boolean;
+  encabezadosRequeridos?: string[];
   /** Convierte una fila del archivo en un registro guardable. */
   mapear: (fila: Record<string, unknown>, extra: Extra) => ResultadoFila;
   /** Agrupa las filas ya mapeadas (solo lo usa Lateness). */
@@ -63,6 +64,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     aceptar: ".csv,.xls,.xlsx",
     applicable: true,
     reemplazarRango: true,
+    encabezadosRequeridos: ["CLAVE", "Id Coach", "Nota Final", "Fecha Monitoreo", "Type QA"],
     columnas: [
       { clave: "fecha_monitoreo", etiqueta: "Fecha Monitoreo" },
       { clave: "month", etiqueta: "Month" },
@@ -119,7 +121,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           evaluating_time: numero(fila["evaluating time"]),
           area_mejora: texto(fila["area de mejora"]),
           type_qa: texto(fila["type qa"]),
-          gerente2: texto(fila["gerente2"]),
+          gerente2: texto(primera(fila, ["gerente2", "gerente.1", "gerente_1"])),
           nota_suc: numero(fila["nota suc"]),
           feedback_type: texto(fila["feedback type"]),
           comentario: texto(fila["comentario"]),
