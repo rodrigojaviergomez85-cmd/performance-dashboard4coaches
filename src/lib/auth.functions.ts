@@ -7,8 +7,13 @@ const accesoSchema = z.object({
   email: z.string().email().max(200),
 });
 
-const MENSAJE_ERROR = "Los datos no coinciden con un coach activo.";
 const LIMITE_POR_HORA = 10;
+
+/**
+ * Mismo resultado para cualquier combinación de Coach Id y correo, para no
+ * revelar qué datos están registrados.
+ */
+const RESPUESTA_UNIFORME = { ok: true as const };
 
 /**
  * Paso 1 del acceso de coaches: se valida en el servidor que el coach_id
@@ -21,67 +26,53 @@ export const solicitarCodigoCoach = createServerFn({ method: "POST" })
     const email = data.email.trim().toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count } = await supabaseAdmin
-      .from("otp_intentos")
-      .select("id", { count: "exact", head: true })
-      .eq("email", email)
-      .gte("creado", desde);
-
-    if ((count ?? 0) >= LIMITE_POR_HORA) {
-      return {
-        ok: false as const,
-        error: "Too many attempts. Please wait an hour and try again.",
-      };
+    // Registro y conteo atómicos: dos solicitudes simultáneas no superan el límite.
+    const { data: permitido, error: errorLimite } = await (supabaseAdmin as any).rpc(
+      "registrar_intento_otp",
+      { _email: email, _limite: LIMITE_POR_HORA },
+    );
+    if (errorLimite) {
+      console.error("Error al registrar el intento:", errorLimite.message);
+      return { ok: false as const, error: "We could not process the request. Please try again." };
+    }
+    if (!permitido) {
+      return { ok: false as const, error: "Too many attempts. Please wait an hour and try again." };
     }
 
-    await supabaseAdmin.from("otp_intentos").insert({ email });
-
-    // 1) El coach debe existir y estar activo.
-    const { data: coach } = await supabaseAdmin
+    const { data: coach, error: errorCoach } = await supabaseAdmin
       .from("coaches")
-      .select("id, nombre, email, activo")
+      .select("id, email, activo")
       .eq("coach_id", data.coachId)
       .eq("activo", true)
       .maybeSingle();
-
-    if (!coach) {
-      return { ok: false as const, error: "Coach Id not found or inactive." };
+    if (errorCoach) {
+      console.error("Error al buscar el coach:", errorCoach.message);
+      return { ok: false as const, error: "We could not process the request. Please try again." };
     }
 
-    // 2) El correo debe pertenecer a ese coach.
-    if ((coach.email ?? "").trim().toLowerCase() !== email) {
-      return { ok: false as const, error: MENSAJE_ERROR };
-    }
+    // Coach inexistente, inactivo o correo ajeno: misma respuesta, sin enviar nada.
+    if (!coach || (coach.email ?? "").trim().toLowerCase() !== email) return RESPUESTA_UNIFORME;
 
-    // El usuario de autenticación se crea solo para coaches válidos.
-    const { data: existentes } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    const yaExiste = existentes?.users?.some((u) => u.email?.toLowerCase() === email);
-    if (!yaExiste) {
-      await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
+    // Crea el usuario si falta; "ya existe" no es un error. No depende de listar usuarios.
+    const { error: errorCrear } = await supabaseAdmin.auth.admin.createUser({ email, email_confirm: true });
+    if (errorCrear && !/already|registered|exists/i.test(errorCrear.message) && (errorCrear as any).code !== "email_exists") {
+      console.error("Error al crear el usuario:", errorCrear.message);
+      return { ok: false as const, error: "We could not process the request. Please try again." };
     }
 
     const url = process.env["SUPABASE_URL"]!;
     const publica = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-
     const envio = await fetch(`${url}/auth/v1/otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: publica },
       body: JSON.stringify({ email, create_user: false }),
     });
-
     if (!envio.ok) {
-      console.error("Error al enviar el código:", await envio.text());
-      return {
-        ok: false as const,
-        error: "We could not send the code. Please try again.",
-      };
+      console.error("Error al enviar el código:", envio.status, await envio.text());
+      return { ok: false as const, error: "We could not process the request. Please try again." };
     }
 
-    return { ok: true as const };
+    return RESPUESTA_UNIFORME;
   });
 
 /**
@@ -96,25 +87,29 @@ export const vincularCoach = createServerFn({ method: "POST" })
 
     if (!email) return { ok: false as const };
 
-    const { data: coach } = await supabaseAdmin
+    const { data: coach, error: errorCoach } = await supabaseAdmin
       .from("coaches")
       .select("id, activo")
       .eq("email", email)
       .eq("activo", true)
       .maybeSingle();
+    if (errorCoach || !coach) return { ok: false as const };
 
-    if (!coach) return { ok: false as const };
-
-    await supabaseAdmin
+    const { error: errorVinculo } = await supabaseAdmin
       .from("coaches")
       .update({ auth_user_id: context.userId })
       .eq("id", coach.id);
+    if (errorVinculo) {
+      console.error("Error al vincular la cuenta:", errorVinculo.message);
+      return { ok: false as const };
+    }
 
-    await supabaseAdmin.from("auditoria").insert({
+    const { error: errorAud } = await supabaseAdmin.from("auditoria").insert({
       actor_id: coach.id,
       accion: "inicio_sesion_coach",
       detalle: { email },
     });
+    if (errorAud) console.error("Error al registrar la auditoría:", errorAud.message);
 
     return { ok: true as const };
   });
