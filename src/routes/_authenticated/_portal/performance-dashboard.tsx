@@ -313,7 +313,7 @@ function PerformanceDashboard() {
                 <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.cuenta ? "Yes" : "No"}</TableCell><TableCell>{fila.cuenta ? "—" : fila.razon_no_cuenta ?? "No score"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">{csatConsulta.isError ? <span className="text-destructive">Could not load comments. <Button variant="link" size="sm" onClick={() => csatConsulta.refetch()}>Retry</Button></span> : csatConsulta.isLoading ? "Loading…" : hayFiltrosCsat ? "No comments match these filters." : "No comments this quarter."}</TableCell></TableRow>}</TableBody>
               </Table>
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Struck-through rows were reviewed one-by-one and excluded from DSAT — the reason is shown.</p>
+            <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward DSAT — the reason is shown.</p>
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
