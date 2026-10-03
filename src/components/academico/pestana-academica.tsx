@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import {
   cargarAcademico,
   eliminarAcademico,
   listarAcademico,
+  opcionesAcademico,
 } from "@/lib/academic.functions";
 import type { ConfigPestana } from "@/lib/academico-config";
 import { leerHoja, rangoMesActual } from "@/lib/hoja-calculo";
@@ -40,6 +41,7 @@ interface Vista {
 
 export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   const listar = useServerFn(listarAcademico);
+  const opciones = useServerFn(opcionesAcademico);
   const cargar = useServerFn(cargarAcademico);
   const eliminar = useServerFn(eliminarAcademico);
   const cambiarApplicable = useServerFn(actualizarApplicable);
@@ -58,30 +60,29 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   const [token, setToken] = useState("");
   const [vista, setVista] = useState<Vista | null>(null);
 
-  const clave = ["academico", config.clave, desde, hasta];
-
-  const { data: filas = [], isLoading } = useQuery({
-    queryKey: clave,
-    queryFn: () => listar({ data: { tabla: config.clave, desde, hasta } }),
+  const consulta = useQuery({
+    queryKey: ["academico", config.clave, desde, hasta, busqueda, filtros, pagina],
+    queryFn: () =>
+      listar({ data: { tabla: config.clave, desde, hasta, busqueda, filtros, pagina, porPagina: POR_PAGINA } }),
+    enabled: !!desde && !!hasta && desde <= hasta,
+    placeholderData: (previo) => previo,
   });
+  const filas = consulta.data?.filas ?? [];
+  const total = consulta.data?.total ?? 0;
+  const hayFiltros = !!busqueda.trim() || Object.values(filtros).some((v) => v.length);
 
-  const opcionesDe = (columna: string) =>
-    [...new Set(filas.map((f) => f[columna]).filter((v) => v != null && v !== ""))]
-      .map(String)
-      .sort();
+  const { data: valores = {} } = useQuery({
+    queryKey: ["academico", config.clave, "opciones", desde, hasta],
+    queryFn: () => opciones({ data: { tabla: config.clave, desde, hasta } }),
+    enabled: !!desde && !!hasta && desde <= hasta,
+  });
+  const opcionesDe = (columna: string) => (valores as Record<string, string[]>)[columna] ?? [];
 
-  const filtradas = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase();
-    return filas.filter((f) => {
-      for (const [columna, valores] of Object.entries(filtros)) {
-        if (valores.length && !valores.includes(String(f[columna] ?? ""))) return false;
-      }
-      if (!texto) return true;
-      return config.busqueda.some((c) => String(f[c] ?? "").toLowerCase().includes(texto));
-    });
-  }, [filas, filtros, busqueda, config.busqueda]);
-
-  const paginadas = filtradas.slice(pagina * POR_PAGINA, pagina * POR_PAGINA + POR_PAGINA);
+  /** Tras importar, borrar o cambiar Applicable se recalculan también los resúmenes del panel. */
+  const refrescar = () => {
+    queryClient.invalidateQueries({ queryKey: ["academico", config.clave] });
+    for (const k of ["panel", "csat", "qa-detalle"]) queryClient.invalidateQueries({ queryKey: [k] });
+  };
 
   const carga = useMutation({
     mutationFn: (registros: Record<string, unknown>[]) =>
@@ -95,12 +96,20 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
         },
       }),
     onSuccess: (r) => {
+      if (!r.ok) {
+        setVista((v) => (v ? { ...v, problemas: r.errores } : v));
+        toast.error("No se guardó nada: hay filas con errores", { description: r.errores[0] });
+        return;
+      }
       toast.success(`${r.insertadas} filas agregadas`, {
-        description: r.omitidas ? `${r.omitidas} repetidas se omitieron.` : undefined,
+        description: [
+          r.borradas ? `${r.borradas} anteriores reemplazadas.` : "",
+          r.omitidas ? `${r.omitidas} repetidas se omitieron.` : "",
+        ].filter(Boolean).join(" ") || undefined,
       });
       setDialogo(false);
       setVista(null);
-      queryClient.invalidateQueries({ queryKey: ["academico", config.clave] });
+      refrescar();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -109,7 +118,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
     mutationFn: (id: string) => eliminar({ data: { tabla: config.clave, id } }),
     onSuccess: () => {
       toast.success("Registro eliminado");
-      queryClient.invalidateQueries({ queryKey: ["academico", config.clave] });
+      refrescar();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -119,7 +128,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
       cambiarApplicable({
         data: { tabla: config.clave as "qa" | "abs", id: v.id, valor: v.valor },
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["academico", config.clave] }),
+    onSuccess: refrescar,
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -135,7 +144,10 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
       crudas.forEach((fila, i) => {
         const r = config.mapear(fila, { mes, token: token.trim() || null });
-        if (r.registro) registros.push(r.registro);
+        const f = r.registro ? String(r.registro[config.campoFecha] ?? "") : "";
+        if (r.registro && config.reemplazarRango && (f < desde || f > hasta)) {
+          if (problemas.length < 20) problemas.push(`Fila ${i + 2}: fecha ${f} fuera del rango ${desde} a ${hasta}`);
+        } else if (r.registro) registros.push(r.registro);
         else if (r.problema && problemas.length < 20)
           problemas.push(`Fila ${i + 2}: ${r.problema}`);
       });
@@ -225,7 +237,20 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {consulta.isError ? (
+              <TableRow>
+                <TableCell colSpan={config.columnas.length + 2} className="py-8 text-center text-destructive">
+                  No se pudieron cargar los registros: {(consulta.error as Error).message}{" "}
+                  <Button variant="link" size="sm" onClick={() => consulta.refetch()}>Reintentar</Button>
+                </TableCell>
+              </TableRow>
+            ) : desde > hasta ? (
+              <TableRow>
+                <TableCell colSpan={config.columnas.length + 2} className="py-8 text-center text-muted-foreground">
+                  La fecha Desde debe ser anterior o igual a Hasta.
+                </TableCell>
+              </TableRow>
+            ) : consulta.isLoading ? (
               <TableRow>
                 <TableCell
                   colSpan={config.columnas.length + 2}
@@ -234,17 +259,17 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
                   Cargando…
                 </TableCell>
               </TableRow>
-            ) : paginadas.length === 0 ? (
+            ) : filas.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={config.columnas.length + 2}
                   className="py-8 text-center text-muted-foreground"
                 >
-                  Sin registros en este periodo.
+                  {hayFiltros ? "Ningún registro coincide con la búsqueda o los filtros." : "Sin registros en este periodo."}
                 </TableCell>
               </TableRow>
             ) : (
-              paginadas.map((fila) => (
+              filas.map((fila) => (
                 <TableRow key={String(fila["id"])}>
                   {config.columnas.map((c) => (
                     <TableCell
@@ -289,12 +314,9 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
-          {filtradas.length === 0
+          {total === 0
             ? "Sin registros"
-            : `Mostrando ${pagina * POR_PAGINA + 1}–${Math.min(
-                (pagina + 1) * POR_PAGINA,
-                filtradas.length,
-              )} de ${filtradas.length}`}
+            : `Mostrando ${pagina * POR_PAGINA + 1}–${Math.min((pagina + 1) * POR_PAGINA, total)} de ${total}`}
         </span>
         <div className="flex gap-2">
           <Button
@@ -308,7 +330,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
           <Button
             variant="outline"
             size="sm"
-            disabled={(pagina + 1) * POR_PAGINA >= filtradas.length}
+            disabled={(pagina + 1) * POR_PAGINA >= total}
             onClick={() => setPagina((p) => p + 1)}
           >
             Siguiente
@@ -395,8 +417,9 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
               Cancelar
             </Button>
             <Button
-              disabled={!vista || carga.isPending}
+              disabled={!vista || carga.isPending || desde > hasta}
               onClick={() => vista && carga.mutate(vista.registros)}
+              title={desde > hasta ? "Rango de fechas inválido" : undefined}
             >
               {carga.isPending ? "Guardando…" : "Confirmar"}
             </Button>
