@@ -222,7 +222,7 @@ function DialogoSubir({ mesInicial }: { mesInicial: string }) {
         const ruta = `${mes}/${crypto.randomUUID()}-${limpio}`;
         const { error: e1 } = await supabase.storage
           .from(BUCKET)
-          .upload(ruta, archivo, { contentType: archivo.type || undefined });
+          .upload(ruta, archivo, { contentType: archivo.type || "application/octet-stream" });
         if (e1) throw e1;
         const { error: e2 } = await supabase.from("materiales_mejora").insert({
           titulo: (archivos.length > 1 ? archivo.name : titulo) || archivo.name,
