@@ -9,6 +9,7 @@ const ENLACES = [
   { to: "/coaches", etiqueta: "Coaches", soloAdmin: true },
   { to: "/performance-dashboard", etiqueta: "Performance Dashboard", soloAdmin: false },
   { to: "/academic-performance", etiqueta: "Academic Performance", soloAdmin: true },
+  { to: "/continuous-improvement", etiqueta: "Mejora Continua", soloAdmin: false },
 ] as const;
 
 export function BarraLateral({ nombre, rol }: { nombre: string; rol: string }) {

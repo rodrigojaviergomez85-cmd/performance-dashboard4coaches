@@ -17,6 +17,7 @@ import { Route as AuthenticatedPortalRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedAdminAcademicPerformanceRouteImport } from './routes/_authenticated/_admin/academic-performance'
 import { Route as AuthenticatedAdminCoachesRouteImport } from './routes/_authenticated/_admin/coaches'
 import { Route as AuthenticatedAdminHomepageRouteImport } from './routes/_authenticated/_admin/homepage'
+import { Route as AuthenticatedPortalContinuousImprovementRouteImport } from './routes/_authenticated/_portal/continuous-improvement'
 import { Route as AuthenticatedPortalPerformanceDashboardRouteImport } from './routes/_authenticated/_portal/performance-dashboard'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,12 @@ const AuthenticatedAdminHomepageRoute =
     path: '/homepage',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedPortalContinuousImprovementRoute =
+  AuthenticatedPortalContinuousImprovementRouteImport.update({
+    id: '/continuous-improvement',
+    path: '/continuous-improvement',
+    getParentRoute: () => AuthenticatedPortalRoute,
+  } as any)
 const AuthenticatedPortalPerformanceDashboardRoute =
   AuthenticatedPortalPerformanceDashboardRouteImport.update({
     id: '/performance-dashboard',
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
   '/coaches': typeof AuthenticatedAdminCoachesRoute
   '/homepage': typeof AuthenticatedAdminHomepageRoute
+  '/continuous-improvement': typeof AuthenticatedPortalContinuousImprovementRoute
   '/performance-dashboard': typeof AuthenticatedPortalPerformanceDashboardRoute
 }
 export interface FileRoutesByTo {
@@ -80,6 +88,7 @@ export interface FileRoutesByTo {
   '/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
   '/coaches': typeof AuthenticatedAdminCoachesRoute
   '/homepage': typeof AuthenticatedAdminHomepageRoute
+  '/continuous-improvement': typeof AuthenticatedPortalContinuousImprovementRoute
   '/performance-dashboard': typeof AuthenticatedPortalPerformanceDashboardRoute
 }
 export interface FileRoutesById {
@@ -92,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/_admin/academic-performance': typeof AuthenticatedAdminAcademicPerformanceRoute
   '/_authenticated/_admin/coaches': typeof AuthenticatedAdminCoachesRoute
   '/_authenticated/_admin/homepage': typeof AuthenticatedAdminHomepageRoute
+  '/_authenticated/_portal/continuous-improvement': typeof AuthenticatedPortalContinuousImprovementRoute
   '/_authenticated/_portal/performance-dashboard': typeof AuthenticatedPortalPerformanceDashboardRoute
 }
 export interface FileRouteTypes {
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/academic-performance'
     | '/coaches'
     | '/homepage'
+    | '/continuous-improvement'
     | '/performance-dashboard'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +121,7 @@ export interface FileRouteTypes {
     | '/academic-performance'
     | '/coaches'
     | '/homepage'
+    | '/continuous-improvement'
     | '/performance-dashboard'
   id:
     | '__root__'
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_admin/academic-performance'
     | '/_authenticated/_admin/coaches'
     | '/_authenticated/_admin/homepage'
+    | '/_authenticated/_portal/continuous-improvement'
     | '/_authenticated/_portal/performance-dashboard'
   fileRoutesById: FileRoutesById
 }
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminHomepageRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/_portal/continuous-improvement': {
+      id: '/_authenticated/_portal/continuous-improvement'
+      path: '/continuous-improvement'
+      fullPath: '/continuous-improvement'
+      preLoaderRoute: typeof AuthenticatedPortalContinuousImprovementRouteImport
+      parentRoute: typeof AuthenticatedPortalRoute
+    }
     '/_authenticated/_portal/performance-dashboard': {
       id: '/_authenticated/_portal/performance-dashboard'
       path: '/performance-dashboard'
@@ -215,10 +235,13 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedPortalRouteChildren {
+  AuthenticatedPortalContinuousImprovementRoute: typeof AuthenticatedPortalContinuousImprovementRoute
   AuthenticatedPortalPerformanceDashboardRoute: typeof AuthenticatedPortalPerformanceDashboardRoute
 }
 
 const AuthenticatedPortalRouteChildren: AuthenticatedPortalRouteChildren = {
+  AuthenticatedPortalContinuousImprovementRoute:
+    AuthenticatedPortalContinuousImprovementRoute,
   AuthenticatedPortalPerformanceDashboardRoute:
     AuthenticatedPortalPerformanceDashboardRoute,
 }
