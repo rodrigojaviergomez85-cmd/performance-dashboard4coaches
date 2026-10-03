@@ -1,15 +1,16 @@
 # Revisión de confiabilidad (oct 2026) — brief por fases
-- [ ] F1 numero()/entero() vacíos → null; fechas validadas por fuente
-- [ ] F1 validación por tabla en servidor, filas dentro del rango, errores por fila
-- [ ] F1 reemplazo atómico (función SQL solo service_role) con auditoría
+- [x] F1 numero()/entero() vacíos → null; fechas validadas por fuente
+- [x] F1 validación por tabla en servidor, filas dentro del rango, errores por fila
+- [x] F1 reemplazo atómico (función SQL solo service_role) con auditoría
 - [ ] F1 unicidad: CSAT, incidencias, NL, lateness. QA bloqueado: 1,027 filas idénticas repetidas ya guardadas (requiere decisión del usuario)
-- [ ] F2 QA unificado, DSAT puro, categorías separadas, alertas sin promesas
-- [ ] F3 sincronizarCoaches atómico con vista previa y desactivación
-- [ ] F3 RLS Mejora Continua (solo coaches activos), URLs de 10 min
-- [ ] F3 OTP uniforme, errores comprobados, límite atómico, sin listUsers
-- [ ] F4 paginación en servidor (Academic, CSAT), estados de pantalla, invalidaciones
-- [ ] F4 Mejora Continua: limpieza de huérfanos, tipos y tamaño
-- [ ] F5 pruebas, README
+- [ ] Pendiente de confirmación: efecto de pago de QA/incidencias, booster NL ≥70%, min_encuestas
+- [x] F2 QA unificado, DSAT puro, categorías separadas, alertas sin promesas
+- [x] F3 sincronizarCoaches atómico con vista previa y desactivación
+- [x] F3 RLS Mejora Continua (solo coaches activos), URLs de 10 min
+- [x] F3 OTP uniforme, errores comprobados, límite atómico, sin listUsers
+- [x] F4 paginación en servidor (Academic, CSAT), estados de pantalla, invalidaciones
+- [x] F4 Mejora Continua: limpieza de huérfanos, tipos y tamaño
+- [x] F5 pruebas, README
 
 # Rediseño Performance Dashboard
 - [x] Igualar la estructura, jerarquía y paleta del scorecard de referencia.
