@@ -778,6 +778,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cargar_academico: {
+        Args: {
+          _actor: string
+          _desde: string
+          _filas: Json
+          _hasta: string
+          _reemplazar: boolean
+          _tabla: string
+        }
+        Returns: Json
+      }
+      registrar_intento_otp: {
+        Args: { _email: string; _limite: number }
+        Returns: boolean
+      }
+      sincronizar_coaches: {
+        Args: { _actor: string; _desactivar: boolean; _filas: Json }
+        Returns: Json
+      }
       tiene_rol: { Args: { _roles: string[] }; Returns: boolean }
     }
     Enums: {
