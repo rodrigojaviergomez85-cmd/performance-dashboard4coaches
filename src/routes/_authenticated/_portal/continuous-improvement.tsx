@@ -17,6 +17,15 @@ import {
 } from "@/components/ui/dialog";
 
 const BUCKET = "mejora-continua";
+/** Vigencia de cada enlace firmado. Un enlace ya emitido funciona hasta que vence. */
+const VIGENCIA_URL_SEG = 600;
+const TAMANO_MAX = 1024 * 1024 * 1024;
+/** Debe coincidir con la política de almacenamiento. */
+const EXTENSIONES = [
+  "pdf", "png", "jpg", "jpeg", "gif", "webp", "mp4", "webm", "mov", "m4v", "mp3", "m4a", "wav",
+  "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "csv",
+];
+const extension = (nombre: string) => (nombre.split(".").pop() ?? "").toLowerCase();
 
 export const Route = createFileRoute("/_authenticated/_portal/continuous-improvement")({
   head: () => ({
@@ -75,7 +84,8 @@ function MejoraContinua() {
         .from("materiales_mejora")
         .select("*")
         .eq("mes", `${mes}-01`)
-        .order("creado", { ascending: false });
+        .order("creado", { ascending: false })
+        .order("id", { ascending: true });
       if (error) throw error;
       return data as Material[];
     },
@@ -114,6 +124,15 @@ function MejoraContinua() {
 
       {consulta.isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
+      ) : consulta.isError ? (
+        <p className="text-sm text-destructive">
+          No se pudieron cargar los materiales.{" "}
+          <Button variant="link" size="sm" onClick={() => consulta.refetch()}>Reintentar</Button>
+        </p>
+      ) : lista.length === 0 && (consulta.data ?? []).length > 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+          No hay materiales de este tipo en {formatoMes(mes)}.
+        </p>
       ) : lista.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
           No hay materiales para {formatoMes(mes)}.
@@ -136,18 +155,21 @@ function TarjetaMaterial({ material, esAdmin }: { material: Material; esAdmin: b
   const url = useQuery({
     queryKey: ["mejora-url", material.ruta],
     queryFn: async () => {
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(material.ruta, 3600);
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(material.ruta, VIGENCIA_URL_SEG);
       if (error) throw error;
       return data.signedUrl;
     },
-    staleTime: 50 * 60 * 1000,
+    staleTime: (VIGENCIA_URL_SEG - 60) * 1000,
+    refetchInterval: (VIGENCIA_URL_SEG - 60) * 1000,
   });
 
   const borrar = useMutation({
     mutationFn: async () => {
-      await supabase.storage.from(BUCKET).remove([material.ruta]);
+      // Primero el registro: si falla, el archivo sigue disponible y nada queda a medias.
       const { error } = await supabase.from("materiales_mejora").delete().eq("id", material.id);
-      if (error) throw error;
+      if (error) throw new Error(`No se eliminó: ${error.message}`);
+      const { error: errorArchivo } = await supabase.storage.from(BUCKET).remove([material.ruta]);
+      if (errorArchivo) throw new Error(`El material se quitó de la lista, pero el archivo no se borró: ${errorArchivo.message}`);
     },
     onSuccess: () => {
       toast.success("Material eliminado");
@@ -214,16 +236,33 @@ function DialogoSubir({ mesInicial }: { mesInicial: string }) {
   const [descripcion, setDescripcion] = useState("");
   const [archivos, setArchivos] = useState<File[]>([]);
 
+  const problemas = archivos
+    .map((a) =>
+      !EXTENSIONES.includes(extension(a.name))
+        ? `${a.name}: tipo no permitido`
+        : a.size > TAMANO_MAX
+          ? `${a.name}: supera 1 GB`
+          : a.size === 0
+            ? `${a.name}: archivo vacío`
+            : null,
+    )
+    .filter((p): p is string => p !== null);
+
   const subir = useMutation({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
+      const fallidos: string[] = [];
+      let subidos = 0;
       for (const archivo of archivos) {
         const limpio = archivo.name.replace(/[^\w.\-]+/g, "_");
         const ruta = `${mes}/${crypto.randomUUID()}-${limpio}`;
         const { error: e1 } = await supabase.storage
           .from(BUCKET)
           .upload(ruta, archivo, { contentType: archivo.type || "application/octet-stream" });
-        if (e1) throw e1;
+        if (e1) {
+          fallidos.push(`${archivo.name}: ${e1.message}`);
+          continue;
+        }
         const { error: e2 } = await supabase.from("materiales_mejora").insert({
           titulo: (archivos.length > 1 ? archivo.name : titulo) || archivo.name,
           descripcion: descripcion || null,
@@ -235,12 +274,23 @@ function DialogoSubir({ mesInicial }: { mesInicial: string }) {
           tamano: archivo.size,
           subido_por: u.user?.id ?? null,
         });
-        if (e2) throw e2;
+        if (e2) {
+          // Sin registro el archivo quedaría huérfano: se limpia.
+          await supabase.storage.from(BUCKET).remove([ruta]);
+          fallidos.push(`${archivo.name}: ${e2.message}`);
+          continue;
+        }
+        subidos++;
       }
+      return { subidos, fallidos };
     },
-    onSuccess: () => {
-      toast.success("Archivos subidos");
+    onSuccess: ({ subidos, fallidos }) => {
       qc.invalidateQueries({ queryKey: ["mejora"] });
+      if (fallidos.length) {
+        toast.error(`${subidos} de ${archivos.length} archivos subidos`, { description: fallidos.join(" · ") });
+        return;
+      }
+      toast.success(subidos === 1 ? "Archivo subido" : `${subidos} archivos subidos`);
       setAbierto(false);
       setTitulo("");
       setDescripcion("");
@@ -282,12 +332,18 @@ function DialogoSubir({ mesInicial }: { mesInicial: string }) {
               id="sub-archivo"
               type="file"
               multiple
+              accept={EXTENSIONES.map((e) => `.${e}`).join(",")}
               onChange={(e) => setArchivos(Array.from(e.target.files ?? []))}
             />
           </div>
+          {problemas.length > 0 && (
+            <ul className="text-xs text-destructive">
+              {problemas.map((p) => <li key={p}>{p}</li>)}
+            </ul>
+          )}
           <Button
             className="w-full"
-            disabled={!mes || archivos.length === 0 || subir.isPending}
+            disabled={!mes || archivos.length === 0 || problemas.length > 0 || subir.isPending}
             onClick={() => subir.mutate()}
           >
             {subir.isPending ? "Subiendo…" : "Subir"}
