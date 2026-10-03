@@ -317,8 +317,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
         .select("curso, salon")
         .eq("teacher_id", coachId)
         .gte("period_month", mesInicio(data.year, inicioMes))
-        .lt("period_month", trimestreFin)
-        .order("id"),
+        .lt("period_month", trimestreFin),
     );
 
     let consulta = supabaseAdmin
@@ -391,8 +390,7 @@ export const detalleQa = createServerFn({ method: "POST" })
         .eq("applicable", 1)
         .gte("fecha_monitoreo", inicio)
         .lt("fecha_monitoreo", fin)
-        .order("fecha_monitoreo", { ascending: false })
-        .order("id", { ascending: true }),
+        .order("fecha_monitoreo", { ascending: false }),
     );
 
     // Misma función que el panel: excluye notas vacías.
