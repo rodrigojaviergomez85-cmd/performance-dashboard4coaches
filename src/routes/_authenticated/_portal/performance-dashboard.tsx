@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -127,20 +127,38 @@ function PerformanceDashboard() {
   const [vistaAnual, setVistaAnual] = useState(false);
   const [mostrarQa, setMostrarQa] = useState(false);
 
+  const [paginaCsat, setPaginaCsat] = useState(0);
+  const POR_PAGINA_CSAT = 25;
+
+  // Al cambiar coach, año o trimestre, los filtros anteriores dejan de aplicar.
+  useEffect(() => {
+    setMes(null);
+    setSyllabus(null);
+    setClase(null);
+    setPaginaCsat(0);
+    setMostrarQa(false);
+  }, [coachId, year, quarter]);
+
   const argumentos = { coachId, year, quarter };
   const { data: coaches = [] } = useQuery({ queryKey: ["directorio-coaches"], queryFn: () => directorio() });
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["panel", coachId, year, quarter],
     queryFn: () => panel({ data: argumentos }),
   });
-  const { data: csat } = useQuery({
-    queryKey: ["csat", coachId, year, quarter, mes, syllabus, clase],
-    queryFn: () => comentarios({ data: { ...argumentos, mes, syllabus, clase, texto: null } }),
+  const csatConsulta = useQuery({
+    queryKey: ["csat", coachId, year, quarter, mes, syllabus, clase, paginaCsat],
+    queryFn: () =>
+      comentarios({ data: { ...argumentos, mes, syllabus, clase, texto: null, pagina: paginaCsat, porPagina: POR_PAGINA_CSAT } }),
+    placeholderData: (previo) => previo,
   });
-  const { data: qa } = useQuery({
+  const csat = csatConsulta.data;
+  const qaConsulta = useQuery({
     queryKey: ["qa-detalle", coachId, year, quarter],
     queryFn: () => qaDetalle({ data: argumentos }),
+    enabled: mostrarQa,
   });
+  const qa = qaConsulta.data;
+  const hayFiltrosCsat = mes !== null || syllabus !== null || clase !== null;
 
   const mesesTexto = useMemo(() => {
     const inicio = (quarter - 1) * 3;
@@ -148,7 +166,12 @@ function PerformanceDashboard() {
   }, [quarter]);
 
   if (error) {
-    return <section className="p-8 text-sm text-destructive">No se pudo cargar el panel: {error.message}</section>;
+    return (
+      <section className="p-8 text-sm text-destructive">
+        No se pudo cargar el panel: {error.message}{" "}
+        <Button variant="link" size="sm" onClick={() => refetch()}>Reintentar</Button>
+      </section>
+    );
   }
 
   if (isLoading || !data) {
@@ -157,7 +180,7 @@ function PerformanceDashboard() {
 
   const diferencia = data.tardanzas - data.tardanzasPrevias;
   const categoria = data.trimestre.categoria;
-  const allClear = !data.qa.bloqueado && data.incidencias < 3;
+  const alertas = data.alertas;
 
   return (
     <section className="scorecard-page">
@@ -239,16 +262,20 @@ function PerformanceDashboard() {
           <div className={cn("scorecard-category-card", estadoCategoria(categoria))}>
             <div className="scorecard-award"><Award className="h-5 w-5" /></div>
             <div>
-              <p className="scorecard-label">Q{quarter} {year} → Q{quarter === 4 ? 1 : quarter + 1} <span className="scorecard-rank">★ TOP PERFORMER</span></p>
+              <p className="scorecard-label">Q{quarter} {year} → Q{quarter === 4 ? 1 : quarter + 1} {categoria === "SUPERSTAR" && <span className="scorecard-rank">★ TOP PERFORMER</span>}</p>
               <p className="mt-2 text-2xl font-bold text-foreground">{categoria ?? "NO DATA"}</p>
             </div>
           </div>
 
           <div className="scorecard-alert-card">
             <p className="scorecard-label">Alerts</p>
-            <div className={cn("mt-2 flex items-center gap-2 rounded px-2 py-1 text-[11px]", allClear ? "bg-scorecard-alert text-scorecard-alert-foreground" : "bg-destructive/10 text-destructive")}>
-              <Sparkles className="h-3.5 w-3.5" />
-              {allClear ? "All clear — great shape." : "Review the locks below."}
+            <div className="mt-2 space-y-1">
+              {alertas.map((alerta) => (
+                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {alerta.texto}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -262,24 +289,28 @@ function PerformanceDashboard() {
           </div>
           <div className="rounded-md border border-border bg-card p-3 shadow-sm">
             <div className="mb-3 flex flex-wrap gap-2">
-              <Select value={mes === null ? "all" : String(mes)} onValueChange={(valor) => setMes(valor === "all" ? null : Number(valor))}>
+              <Select value={mes === null ? "all" : String(mes)} onValueChange={(valor) => { setMes(valor === "all" ? null : Number(valor)); setPaginaCsat(0); }}>
                 <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="all">All months</SelectItem>{data.meses.map((item) => <SelectItem key={item.mes} value={String(item.mes)}>{item.etiqueta}</SelectItem>)}</SelectContent>
               </Select>
-              <Select value={syllabus ?? "all"} onValueChange={(valor) => setSyllabus(valor === "all" ? null : valor)}>
+              <Select value={syllabus ?? "all"} onValueChange={(valor) => { setSyllabus(valor === "all" ? null : valor); setPaginaCsat(0); }}>
                 <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All syllabuses" /></SelectTrigger>
                 <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
               </Select>
-              <Select value={clase ?? "all"} onValueChange={(valor) => setClase(valor === "all" ? null : valor)}>
+              <Select value={clase ?? "all"} onValueChange={(valor) => { setClase(valor === "all" ? null : valor); setPaginaCsat(0); }}>
                 <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="All classes" /></SelectTrigger>
                 <SelectContent><SelectItem value="all">All classes</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
               </Select>
-              <div className="flex h-8 items-center rounded-md border border-border px-3 text-[11px] text-foreground">Showing {(csat?.filas ?? []).length} of {csat?.total ?? 0} records</div>
+              <div className="flex h-8 items-center rounded-md border border-border px-3 text-[11px] text-foreground">{csat?.total ? `Showing ${paginaCsat * POR_PAGINA_CSAT + 1}–${paginaCsat * POR_PAGINA_CSAT + csat.filas.length} of ${csat.total} records` : "0 records"}</div>
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={paginaCsat === 0} onClick={() => setPaginaCsat((p) => p - 1)}>Previous</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!csat || (paginaCsat + 1) * POR_PAGINA_CSAT >= csat.total} onClick={() => setPaginaCsat((p) => p + 1)}>Next</Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <Table className="min-w-[850px] text-[11px]">
                 <TableHeader><TableRow className="bg-muted/70"><TableHead>Month</TableHead><TableHead>Syllabus</TableHead><TableHead>Class ID</TableHead><TableHead>Experience Comment</TableHead><TableHead>Coach Score</TableHead><TableHead>Coach Comment</TableHead><TableHead>Counts?</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader>
-                <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.status === "Aplica a coach" ? "Yes" : "No"}</TableCell><TableCell>{fila.razon_no_cuenta ?? "—"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">No comments match these filters.</TableCell></TableRow>}</TableBody>
+                <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.cuenta ? "Yes" : "No"}</TableCell><TableCell>{fila.cuenta ? "—" : fila.razon_no_cuenta ?? "No score"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">{csatConsulta.isError ? <span className="text-destructive">Could not load comments. <Button variant="link" size="sm" onClick={() => csatConsulta.refetch()}>Retry</Button></span> : csatConsulta.isLoading ? "Loading…" : hayFiltrosCsat ? "No comments match these filters." : "No comments this quarter."}</TableCell></TableRow>}</TableBody>
               </Table>
             </div>
             <p className="mt-2 text-[10px] text-muted-foreground">Struck-through rows were reviewed one-by-one and excluded from DSAT — the reason is shown.</p>
@@ -287,18 +318,18 @@ function PerformanceDashboard() {
 
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Locks</h2>
-            <p className="text-[10px] text-muted-foreground">These drive whether your CSAT Category pays out</p>
+            <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.bloqueado ? "Below minimum locks Category" : "Below minimum locks Category"} accion={() => setMostrarQa((actual) => !actual)} tono={data.qa.bloqueado ? "warning" : "success"} />
-            <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Locks Category at >3" {...(data.incidencias > 3 ? { tono: "warning" as const } : {})} />
+            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setMostrarQa((actual) => !actual)} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
+            <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Limit is 3 days" {...(data.incidencias >= 3 ? { tono: "warning" as const } : {})} />
             <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
-            <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota="≥70% boosts to SUPERSTAR" {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
+            <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota={data.nl === null ? "No NL evaluations this quarter" : "≥70% booster pending confirmation"} {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 
           {mostrarQa && (
             <div className="overflow-x-auto rounded-md border border-border bg-card">
-              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{(qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "—"}</TableCell></TableRow>)}</TableBody></Table>
+              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
             </div>
           )}
         </>
