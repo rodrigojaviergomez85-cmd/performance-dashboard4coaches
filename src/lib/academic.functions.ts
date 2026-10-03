@@ -170,11 +170,74 @@ async function todasLasFilas<T>(construir: () => any): Promise<T[]> {
 
 const tablaSchema = z.enum(["qa", "dsat", "nl", "abs", "lateness"]);
 
+const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const nota = z.number().min(0).max(10).nullable();
+const id = z.number().int().nullable();
+const txt = z.string().max(4000).nullable();
+
+/** Esquemas por tabla: campos requeridos, IDs, fechas y escalas (0 a 10). */
+const ESQUEMAS = {
+  qa: z.object({
+    fecha_monitoreo: fechaIso,
+    fecha_ingresado: fechaIso.nullable(),
+    coach_id: z.number().int(),
+    nota_final: nota,
+    nota_suc: z.number().nullable(),
+    evaluating_time: z.number().nullable(),
+    applicable: z.union([z.literal(0), z.literal(1)]),
+  }).catchall(txt),
+  dsat: z.object({
+    period_month: fechaIso,
+    teacher_id: z.number().int(),
+    coach_score: nota,
+    bist_score: nota,
+    instalaciones_score: nota,
+    experiencia_score: nota,
+    student_id: id,
+    idcontrol: id,
+    inscritos: id,
+  }).catchall(txt),
+  nl: z.object({
+    fecha: fechaIso,
+    class_id: z.number().int(),
+    coach_id: id,
+    student_id: id,
+  }).catchall(txt),
+  abs: z.object({
+    fecha: fechaIso,
+    coach_id: z.number().int(),
+    anio: id,
+    week: id,
+    horas_asignadas: z.number().nullable(),
+    applicable: z.union([z.literal(0), z.literal(1)]),
+  }).catchall(txt),
+  lateness: z.object({
+    fecha: fechaIso,
+    teacher_id: z.number().int(),
+    late_count: z.number().int().min(1),
+  }).catchall(txt),
+} as const;
+
 const entradaLista = z.object({
   tabla: tablaSchema,
-  desde: z.string().max(10),
-  hasta: z.string().max(10),
+  desde: fechaIso,
+  hasta: fechaIso,
+  busqueda: z.string().max(120).default(""),
+  filtros: z.record(z.string().max(60), z.array(z.string().max(300)).max(200)).default({}),
+  pagina: z.number().int().min(0).max(100000).default(0),
+  porPagina: z.number().int().min(10).max(200).default(50),
 });
+
+/** Columnas por las que se puede filtrar y buscar en cada tabla. */
+const FILTRABLES: Record<ClaveTabla, { filtros: string[]; texto: string[]; numero: string[] }> = {
+  qa: { filtros: ["pais", "sucursal", "level", "horario", "type_qa", "feedback_type"], texto: ["coach", "clave", "gerente"], numero: ["coach_id"] },
+  dsat: { filtros: ["aplica_coach", "curso", "nivel", "horario", "csat_type", "linea_negocio"], texto: ["evaluating_coach", "trainee_name", "token"], numero: ["teacher_id"] },
+  nl: { filtros: ["syllabus", "level", "horario", "resultado"], texto: ["coach"], numero: ["coach_id"] },
+  abs: { filtros: ["pais", "sucursal", "curso", "motivo", "tipo"], texto: ["coach_asignado", "coach_cubre", "coordinador"], numero: ["coach_id"] },
+  lateness: { filtros: ["coordinator", "senior"], texto: ["teacher_name", "coordinator", "senior"], numero: ["teacher_id"] },
+};
+
+const paraIlike = (t: string) => t.replace(/[%_\\,()."*]/g, " ").trim();
 
 export const listarAcademico = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -182,26 +245,74 @@ export const listarAcademico = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await exigirAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const cfg = TABLAS[data.tabla as ClaveTabla];
+    const tabla = data.tabla as ClaveTabla;
+    const cfg = TABLAS[tabla];
+    const permitidos = FILTRABLES[tabla];
 
-    const filas = await todasLasFilas<any>(() =>
+    let consulta: any = supabaseAdmin
+      .from(cfg.nombre)
+      .select("*", { count: "exact" })
+      .gte(cfg.fecha, data.desde)
+      .lte(cfg.fecha, data.hasta);
+
+    for (const [columna, valores] of Object.entries(data.filtros)) {
+      if (!valores.length || !permitidos.filtros.includes(columna)) continue;
+      const conVacio = valores.includes("");
+      const llenos = valores.filter((v) => v !== "");
+      if (conVacio && llenos.length) consulta = consulta.or(`${columna}.is.null,${columna}.in.(${llenos.map((v) => `"${v.replace(/"/g, "")}"`).join(",")})`);
+      else if (conVacio) consulta = consulta.is(columna, null);
+      else consulta = consulta.in(columna, llenos);
+    }
+
+    const texto = paraIlike(data.busqueda);
+    if (texto) {
+      const partes = permitidos.texto.map((c) => `${c}.ilike.*${texto}*`);
+      if (/^\d+$/.test(texto)) partes.push(...permitidos.numero.map((c) => `${c}.eq.${texto}`));
+      consulta = consulta.or(partes.join(","));
+    }
+
+    const desde = data.pagina * data.porPagina;
+    const { data: filas, count, error } = await consulta
+      .order(cfg.fecha, { ascending: false })
+      .order("id", { ascending: true })
+      .range(desde, desde + data.porPagina - 1);
+    if (error) throw new Error(error.message);
+
+    return { filas: (filas ?? []) as Record<string, unknown>[], total: count ?? 0 };
+  });
+
+const entradaOpciones = z.object({ tabla: tablaSchema, desde: fechaIso, hasta: fechaIso });
+
+/** Valores distintos de las columnas filtrables del periodo (solo esas columnas). */
+export const opcionesAcademico = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => entradaOpciones.parse(input))
+  .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const tabla = data.tabla as ClaveTabla;
+    const cfg = TABLAS[tabla];
+    const columnas = FILTRABLES[tabla].filtros;
+    const filas = await todasLasFilas<Record<string, unknown>>(() =>
       supabaseAdmin
         .from(cfg.nombre)
-        .select("*")
+        .select(columnas.join(", "))
         .gte(cfg.fecha, data.desde)
-        .lte(cfg.fecha, data.hasta)
-        .order(cfg.fecha, { ascending: false }),
+        .lte(cfg.fecha, data.hasta),
     );
-
-    return filas;
+    const salida: Record<string, string[]> = {};
+    for (const c of columnas) {
+      salida[c] = [...new Set(filas.map((f) => f[c]).filter((v) => v != null && v !== "").map(String))].sort();
+    }
+    return salida;
   });
 
 const entradaCarga = z.object({
   tabla: tablaSchema,
   filas: z.array(z.record(z.string(), z.any())).min(1).max(20000),
   reemplazarRango: z.boolean().optional(),
-  desde: z.string().max(10).optional(),
-  hasta: z.string().max(10).optional(),
+  desde: fechaIso,
+  hasta: fechaIso,
 });
 
 const claveDe = (fila: any, campos: readonly string[]) =>
@@ -212,15 +323,37 @@ export const cargarAcademico = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => entradaCarga.parse(input))
   .handler(async ({ data, context }) => {
     const actor = await exigirAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const cfg = TABLAS[data.tabla as ClaveTabla];
+    const tabla = data.tabla as ClaveTabla;
+    const cfg = TABLAS[tabla];
 
-    // Solo se guardan las columnas conocidas de cada tabla.
+    if (data.desde > data.hasta) {
+      return { ok: false as const, errores: ["La fecha Desde debe ser anterior o igual a Hasta."] };
+    }
+
+    // Solo se guardan las columnas conocidas de cada tabla; faltantes = null.
     const limpias = data.filas.map((f) => {
       const salida: Record<string, unknown> = {};
-      for (const col of cfg.columnas) if (f[col] !== undefined) salida[col] = f[col];
+      for (const col of cfg.columnas) salida[col] = f[col] === undefined ? null : f[col];
       return salida;
     });
+
+    // Validación completa antes de tocar datos: errores por fila.
+    const errores: string[] = [];
+    const esquema = ESQUEMAS[tabla];
+    limpias.forEach((fila, i) => {
+      if (errores.length >= 50) return;
+      const r = esquema.safeParse(fila);
+      if (!r.success) {
+        const p = r.error.issues[0]!;
+        errores.push(`Fila ${i + 1}: ${p.path.join(".") || "registro"} — ${p.message}`);
+        return;
+      }
+      const f = String(fila[cfg.fecha]);
+      if (f < data.desde || f > data.hasta) {
+        errores.push(`Fila ${i + 1}: la fecha ${f} está fuera del rango ${data.desde} a ${data.hasta}.`);
+      }
+    });
+    if (errores.length) return { ok: false as const, errores };
 
     // Duplicados dentro del mismo archivo.
     const vistas = new Set<string>();
@@ -231,50 +364,25 @@ export const cargarAcademico = createServerFn({ method: "POST" })
       return true;
     });
 
-    let omitidas = limpias.length - unicas.length;
-
-    if (data.reemplazarRango && data.desde && data.hasta) {
-      const { error } = await supabaseAdmin
-        .from(cfg.nombre)
-        .delete()
-        .gte(cfg.fecha, data.desde)
-        .lte(cfg.fecha, data.hasta);
-      if (error) throw new Error(error.message);
-    } else {
-      // Duplicados contra lo que ya está guardado.
-      const fechas = unicas.map((f) => String(f[cfg.fecha] ?? "")).filter(Boolean).sort();
-      if (fechas.length) {
-        const existentes = await todasLasFilas<any>(() =>
-          supabaseAdmin
-            .from(cfg.nombre)
-            .select(cfg.clave.join(", "))
-            .gte(cfg.fecha, fechas[0])
-            .lte(cfg.fecha, fechas[fechas.length - 1]),
-        );
-        const conocidas = new Set(existentes.map((f) => claveDe(f, cfg.clave)));
-        const antes = unicas.length;
-        for (let i = unicas.length - 1; i >= 0; i--) {
-          if (conocidas.has(claveDe(unicas[i], cfg.clave))) unicas.splice(i, 1);
-        }
-        omitidas += antes - unicas.length;
-      }
-    }
-
-    let insertadas = 0;
-    for (let i = 0; i < unicas.length; i += 500) {
-      const lote = unicas.slice(i, i + 500);
-      const { error } = await (supabaseAdmin.from(cfg.nombre) as any).insert(lote);
-      if (error) throw new Error(error.message);
-      insertadas += lote.length;
-    }
-
-    await supabaseAdmin.from("auditoria").insert({
-      actor_id: actor.id,
-      accion: "carga_academica",
-      detalle: { tabla: cfg.nombre, insertadas, omitidas },
+    // Reemplazo, inserción y auditoría en una sola transacción.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: r, error } = await (supabaseAdmin as any).rpc("cargar_academico", {
+      _tabla: tabla,
+      _filas: unicas,
+      _reemplazar: data.reemplazarRango ?? false,
+      _desde: data.desde,
+      _hasta: data.hasta,
+      _actor: actor.id,
     });
+    if (error) throw new Error(`No se guardó nada: ${error.message}`);
 
-    return { insertadas, omitidas };
+    const res = r as { insertadas: number; omitidas: number; borradas: number };
+    return {
+      ok: true as const,
+      insertadas: res.insertadas,
+      omitidas: res.omitidas + (limpias.length - unicas.length),
+      borradas: res.borradas,
+    };
   });
 
 const entradaEliminar = z.object({ tabla: tablaSchema, id: z.string().uuid() });
