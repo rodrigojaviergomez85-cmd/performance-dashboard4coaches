@@ -3,7 +3,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import * as XLSX from "xlsx";
-import { listarCoaches, sincronizarCoaches } from "@/lib/coaches.functions";
+import {
+  cambiarEstadoCoach,
+  listarCoaches,
+  previsualizarCoaches,
+  sincronizarCoaches,
+} from "@/lib/coaches.functions";
+import { entero as enteroEstricto } from "@/lib/hoja-calculo";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,10 +75,7 @@ function texto(valor: unknown): string | null {
   return limpio === "" ? null : limpio;
 }
 
-function entero(valor: unknown): number | null {
-  const n = Number(texto(valor));
-  return Number.isFinite(n) ? Math.trunc(n) : null;
-}
+const entero = enteroEstricto;
 
 function PaginaCoaches() {
   const obtener = useServerFn(listarCoaches);
@@ -85,14 +96,31 @@ function PaginaCoaches() {
     queryFn: () => obtener(),
   });
 
+  const previsualizar = useServerFn(previsualizarCoaches);
+  const cambiarEstado = useServerFn(cambiarEstadoCoach);
+  const [pendiente, setPendiente] = useState<{
+    filas: FilaCarga[];
+    omitidas: number;
+    impacto: Awaited<ReturnType<typeof previsualizarCoaches>>;
+  } | null>(null);
+  const [desactivar, setDesactivar] = useState(false);
+
   const carga = useMutation({
-    mutationFn: (filas: FilaCarga[]) => sincronizar({ data: { filas } }),
-    onSuccess: (resultado) => {
+    mutationFn: (v: { filas: FilaCarga[]; desactivar: boolean }) =>
+      sincronizar({ data: { filas: v.filas, desactivarAusentes: v.desactivar } }),
+    onSuccess: (r) => {
       setMensaje(
-        `Lista actualizada: ${resultado.cargados} coaches en el archivo, ${resultado.eliminados} eliminados.`,
+        `Lista actualizada: ${r.nuevos} nuevos, ${r.actualizados} actualizados, ${r.desactivados} desactivados.`,
       );
+      setPendiente(null);
       queryClient.invalidateQueries({ queryKey: ["coaches"] });
     },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const estado = useMutation({
+    mutationFn: (v: { id: string; activo: boolean }) => cambiarEstado({ data: v }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["coaches"] }),
     onError: (e: Error) => setError(e.message),
   });
 
@@ -137,13 +165,17 @@ function PaginaCoaches() {
           .toLowerCase();
 
       const filas: FilaCarga[] = [];
+      let omitidas = 0;
       for (const cruda of crudas) {
         const fila: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(cruda)) fila[clave(k)] = v;
 
         const coachId = entero(fila["id coach"]);
         const nombre = texto(fila["coach"]);
-        if (coachId === null || !nombre) continue;
+        if (coachId === null || !nombre) {
+          if (Object.values(fila).some((v) => texto(v) !== null)) omitidas++;
+          continue;
+        }
         filas.push({
           coach_id: coachId,
           nombre,
@@ -163,9 +195,11 @@ function PaginaCoaches() {
         setError("El archivo no contiene columnas Id Coach y Coach con datos.");
         return;
       }
-      carga.mutate(filas);
-    } catch {
-      setError("No se pudo leer el archivo. Verifique que sea un archivo xlsx válido.");
+      const impacto = await previsualizar({ data: { filas } });
+      setDesactivar(false);
+      setPendiente({ filas, omitidas, impacto });
+    } catch (e) {
+      setError(`No se pudo leer el archivo: ${(e as Error).message}`);
     }
   }
 
@@ -207,8 +241,8 @@ function PaginaCoaches() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">Coaches</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Cargue el archivo mensual en formato xlsx. Los coaches que no aparezcan en el
-            archivo se eliminan de la lista.
+            Cargue el archivo mensual en formato xlsx. Antes de aplicar verá el impacto; los
+            coaches ausentes solo se desactivan si usted lo confirma.
           </p>
         </div>
         <div>
@@ -306,18 +340,19 @@ function PaginaCoaches() {
               <TableHead>Coordinador</TableHead>
               <TableHead>Id Coach</TableHead>
               <TableHead>Coach</TableHead>
+              <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No hay coaches para mostrar.
                 </TableCell>
               </TableRow>
@@ -329,12 +364,69 @@ function PaginaCoaches() {
                   <TableCell>{c.coordinador ?? "-"}</TableCell>
                   <TableCell>{c.coach_id}</TableCell>
                   <TableCell className="font-medium text-foreground">{c.nombre}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className={c.activo ? "text-foreground" : "text-muted-foreground"}>
+                        {c.activo ? "Activo" : "Inactivo"}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={estado.isPending}
+                        onClick={() => estado.mutate({ id: c.id, activo: !c.activo })}
+                      >
+                        {c.activo ? "Desactivar" : "Reactivar"}
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!pendiente} onOpenChange={(v) => !v && setPendiente(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revisar cambios antes de aplicar</DialogTitle>
+          </DialogHeader>
+          {pendiente && (
+            <div className="space-y-3 text-sm text-foreground">
+              <ul className="space-y-1">
+                <li>{pendiente.impacto.enArchivo} coaches en el archivo</li>
+                <li>{pendiente.impacto.nuevos} nuevos</li>
+                <li>{pendiente.impacto.actualizados} con datos actualizados</li>
+                {pendiente.impacto.inactivosEnArchivo > 0 && (
+                  <li>{pendiente.impacto.inactivosEnArchivo} desactivados siguen inactivos (se reactivan a mano)</li>
+                )}
+                {pendiente.impacto.protegidos > 0 && (
+                  <li>{pendiente.impacto.protegidos} cuentas de administración o revisión no se modifican</li>
+                )}
+                {pendiente.omitidas > 0 && <li>{pendiente.omitidas} filas sin Id Coach o nombre válidos se omiten</li>}
+                <li>
+                  {pendiente.impacto.ausentes} de {pendiente.impacto.activos} coaches activos no están en el archivo
+                </li>
+              </ul>
+              {pendiente.impacto.ausentes > 0 && (
+                <label className="flex items-center gap-2">
+                  <Checkbox checked={desactivar} onCheckedChange={(v) => setDesactivar(v === true)} />
+                  Desactivar a los {pendiente.impacto.ausentes} ausentes (no se borran)
+                </label>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendiente(null)}>Cancelar</Button>
+            <Button
+              disabled={carga.isPending}
+              onClick={() => pendiente && carga.mutate({ filas: pendiente.filas, desactivar })}
+            >
+              {carga.isPending ? "Aplicando..." : "Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

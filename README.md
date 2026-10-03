@@ -1,64 +1,47 @@
-# Performance Dashboard - E4CC
+# Performance Dashboard — Portal de Coaches E4CC
 
-Construye una aplicación web interna en español llamada "Portal de Coaches English4Kids". Es para que cada coach vea sus encuestas de satisfacción y su categoría de pago, y para que el equipo administrativo revise las notas bajas.
+Aplicación interna para que cada coach vea su scorecard trimestral y para que administración cargue los archivos académicos, mantenga la lista de coaches y publique materiales de Mejora Continua.
 
-REGLA DE SEGURIDAD NO NEGOCIABLE
+## Arquitectura
 
-El navegador NUNCA debe consultar la tabla de encuestas directamente. Toda lectura de datos de encuestas pasa por Edge Functions de Supabase que identifican al usuario a partir de su sesión. La clave pública (anon key) no debe servir para leer ninguna encuesta. La clave de servicio (service role) va solo en variables de entorno del servidor, jamás en el código del cliente. Activa Row Level Security en TODAS las tablas.
+- TanStack Start (React 19 + Vite) con funciones de servidor (`createServerFn`) en `src/lib/*.functions.ts`.
+- Lovable Cloud (Postgres, Auth, Storage). RLS activo en todas las tablas.
+- Las tablas académicas (`qa_evaluaciones`, `csat_respuestas`, `incidencias`, `nl_evals`, `lateness`) no tienen lectura desde el navegador: todo pasa por funciones de servidor que identifican al usuario por su sesión y su fila en `coaches`.
+- La clave de servicio solo se usa en el servidor, cargada dentro de cada función.
 
-AUTENTICACIÓN
+## Accesos
 
-Supabase Auth con OTP por correo: el usuario escribe su correo y recibe un código de 6 dígitos válido 10 minutos. Sin contraseñas y sin registro público. Solo pueden entrar correos que ya existan en la tabla "coaches" con activo = true. Al pedir el código, la pantalla debe decir siempre lo mismo exista o no el correo: "Si el correo está registrado, le enviamos un código". Límite de 5 solicitudes por correo por hora.
+- **Coach**: Coach Id + correo → el servidor valida coach activo y correo propio, y envía un código OTP. La respuesta es la misma exista o no el coach. Límite de 10 solicitudes por correo por hora, atómico (`registrar_intento_otp`).
+- **Admin**: usuario y contraseña. El rol se lee siempre en el servidor (`coaches.rol`, `activo`).
+- Un coach solo ve sus propios datos: el servidor ignora el coach solicitado salvo para admin/revisor.
 
-TABLAS
+## Cargas académicas (Academic Performance)
 
-coaches: id uuid pk, coach_id int único, nombre text, email text único en minúsculas, coordinador text, tenure text, rol text (coach|revisor|admin), activo bool, auth_user_id uuid
+1. El navegador lee el xlsx (`src/lib/hoja-calculo.ts`), localiza la hoja por encabezados y convierte cada fila (`src/lib/academico-config.ts`). Vacíos = null; IDs con decimales o fechas inexistentes se rechazan por fila.
+2. Formatos de fecha por fuente: QA día/mes/año (corregido solo si la columna Month lo demuestra); NL, Lateness e incidencias mes/día/año o fecha de Excel.
+3. El servidor valida cada fila con un esquema por tabla (requeridos, IDs, escala 0–10) y que esté dentro del rango Desde/Hasta. Si hay errores, no se modifica nada y se devuelven por fila.
+4. `cargar_academico` (función SQL, solo `service_role`) borra el rango, inserta y registra la auditoría en una transacción con bloqueo por tabla. Si algo falla, los datos anteriores quedan intactos.
+5. Índices únicos en CSAT, incidencias, NL y Lateness. QA queda sin índice único hasta resolver duplicados históricos.
 
-encuestas: id uuid pk, coach_id int, periodo text ("2026-08"), score int 1..10, comentario text, curso text, primera_semana bool, origen text, creado timestamptz
+Listados con filtros, búsqueda y paginación en el servidor, orden estable por fecha e id.
 
-revisiones: encuesta_id uuid único fk encuestas.id, cuenta bool, motivo text, revisor_id uuid fk coaches.id, actualizado timestamptz
+## Cálculos (`src/lib/reglas.ts`, con pruebas)
 
-parametros: fila única con umbral_superstar numeric 0.06, umbral_great numeric 0.12, min_encuestas int 20, trimestre_activo text
+- QA: promedio que excluye notas vacías; misma función en panel y detalle. <7.5 bloqueo, 7.5–<7.8 advertencia.
+- DSAT: cuentan las encuestas con "Aplica Coach" en blanco y nota; DSAT = nota ≤ 8 / que cuentan. Comparación sin redondear; ≤6% SUPERSTAR, ≤12% GREAT, resto BAD (`parametros`).
+- La categoría mostrada es solo por DSAT. Elegibilidad de pago, booster NL y `min_encuestas` están pendientes de política confirmada y no se aplican.
+- Incidencias: días distintos con applicable = 1; una sola regla para alertas y tarjetas (>3 crítico, =3 aviso).
 
-auditoria: id uuid, actor_id uuid, accion text, detalle jsonb, creado timestamptz
+## Coaches
 
-POLÍTICAS RLS
+Carga xlsx con vista previa del impacto. `sincronizar_coaches` (transacción, solo `service_role`) actualiza datos de directorio, crea nuevos, no cambia roles, no reactiva cuentas y solo desactiva ausentes si el admin lo confirma. Nunca borra; conserva vínculos de acceso. Reactivación manual desde la tabla.
 
-- encuestas: "create policy sin_lectura_directa on encuestas for select using (false)" — nadie lee esta tabla desde el cliente.
+## Mejora Continua
 
-- coaches: cada usuario ve solo su fila (auth_user_id = auth.uid()); quienes tengan rol revisor o admin ven todas.
+Bucket privado `mejora-continua` (máx. 1 GB por archivo, extensiones permitidas por política). Leen solo usuarios vinculados a un coach activo; suben y borran solo admins activos. Enlaces firmados de 10 minutos: un enlace ya emitido sigue funcionando hasta vencer.
 
-- revisiones: solo revisor y admin pueden leer y escribir.
+## Desarrollo
 
-- parametros: leen revisor y admin; escribe solo admin.
-
-- auditoria: solo admin lee; se escribe desde el servidor.
-
-ROLES
-
-coach ve únicamente lo suyo. revisor ve a todos y marca las notas bajas. admin hace todo eso más cargar el archivo mensual y editar parámetros. El rol se lee siempre de la tabla coaches en el servidor, nunca de algo que mande el navegador.
-
-Por ahora crea solo la base de datos, las políticas, el login y una pantalla vacía que diga "Hola, {nombre}" con el nombre del coach que inició sesión y un botón de salir. Idioma español, modo claro y oscuro, sin emojis.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://performance-dashboard4coaches.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/62acb041-83a9-4baf-9f52-2f934b220068).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+- `bun run test` — pruebas (Vitest).
+- `bun run lint` — ESLint (hay deuda de formato previa).
+- Migraciones en `drizzle/migrations`.

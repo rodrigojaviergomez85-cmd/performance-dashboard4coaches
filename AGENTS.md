@@ -10,3 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Spreadsheet imports with multiple worksheets select the data worksheet by required normalized headers, because exported workbooks include report and pivot sheets before the raw monthly data.
+- Academic uploads are validated per table on the server and written through the `cargar_academico` SQL function (service_role only), because range replacement must be atomic with its audit row.
+- Coach directory sync goes through `sincronizar_coaches` (service_role only) and never changes roles, reactivates accounts or deletes rows, because imported files can be incomplete.
+- Dashboard calculations live in pure `src/lib/reglas.ts` with Vitest tests, so panel and detail views share one definition.
+- Multi-page Data API reads always order by a unique id, because unordered range pagination can skip or repeat rows.

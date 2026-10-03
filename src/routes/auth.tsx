@@ -68,7 +68,7 @@ function PantallaAcceso() {
         return;
       }
       setCodigoEnviado(true);
-      setAviso("We sent a code to your email. It expires in a few minutes.");
+      setAviso("If the details match an active coach, a code was sent to that email. It expires in a few minutes.");
     } catch {
       setError("We could not process the request. Please try again.");
     } finally {

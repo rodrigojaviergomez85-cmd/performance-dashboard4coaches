@@ -1,3 +1,17 @@
+# Revisión de confiabilidad (oct 2026) — brief por fases
+- [x] F1 numero()/entero() vacíos → null; fechas validadas por fuente
+- [x] F1 validación por tabla en servidor, filas dentro del rango, errores por fila
+- [x] F1 reemplazo atómico (función SQL solo service_role) con auditoría
+- [ ] F1 unicidad: CSAT, incidencias, NL, lateness. QA bloqueado: 1,027 filas idénticas repetidas ya guardadas (requiere decisión del usuario)
+- [ ] Pendiente de confirmación: efecto de pago de QA/incidencias, booster NL ≥70%, min_encuestas
+- [x] F2 QA unificado, DSAT puro, categorías separadas, alertas sin promesas
+- [x] F3 sincronizarCoaches atómico con vista previa y desactivación
+- [x] F3 RLS Mejora Continua (solo coaches activos), URLs de 10 min
+- [x] F3 OTP uniforme, errores comprobados, límite atómico, sin listUsers
+- [x] F4 paginación en servidor (Academic, CSAT), estados de pantalla, invalidaciones
+- [x] F4 Mejora Continua: limpieza de huérfanos, tipos y tamaño
+- [x] F5 pruebas, README
+
 # Rediseño Performance Dashboard
 - [x] Igualar la estructura, jerarquía y paleta del scorecard de referencia.
 - [x] Conservar DSAT, comentarios CSAT, QA, incidencias, tardanzas y NL.
@@ -13,26 +27,10 @@ Decisiones confirmadas:
 - Panel: administración con selector de coach; cada coach ve solo lo suyo, sin selector.
 - Seguridad propia del portal: tablas sin acceso desde el navegador, todo por funciones de servidor.
 
-## Tareas
-- [x] Migración: qa_evals, dsat_evals, nl_evals, abs_incidencias, lateness (RLS activo, sin políticas de cliente)
-- [x] Funciones de servidor de Academic Performance (listar, cargar, editar applicable, eliminar)
-- [x] Funciones de servidor del panel (resumen, año completo, detalle QA, comentarios CSAT, directorio)
-- [x] Tokens de tema del panel (claro/oscuro propio)
-- [x] Página Academic Performance con las seis pestañas
-- [x] Página Performance Dashboard (resumen, año completo, detalle QA)
-- [x] Menú lateral compartido admin/coach
-
 ## Abierto
-- Validación de syllabus/horario contra tablas de referencia: el sitio original la hace contra `syllabi` y `schedules`,
-  que aquí no existen ni tienen pantalla de mantenimiento. Por ahora no se valida. Pendiente de confirmar con el usuario.
-
-## Verificado
-- Compilación y tipos sin errores; probado como administrador: /performance-dashboard y /academic-performance cargan sin errores de consola.
-- Falta probar la carga real de archivos QA/DSAT/NL/Abs/Lateness con archivos de ejemplo del usuario.
+- Validación de syllabus/horario contra tablas de referencia: pendiente de confirmar con el usuario.
 
 ## Archivos reales (sep 2026)
-- Tablas nuevas según los archivos del usuario: qa_evaluaciones (QA_FINAL), csat_respuestas (CSAT_FINAL, fuente del DSAT), incidencias (INCIDENCIAS). Las anteriores (qa_evals, dsat_evals, abs_incidencias) quedan marcadas como obsoletas.
-- DSAT = (APLICA O NO COACH en blanco y CSAT COACH SCORE <= 8) / (todas con APLICA O NO COACH en blanco). Validado: 100/1896 = 5.27% en el archivo de agosto.
-- QA usa Nota Final y Fecha Monitoreo; las fechas del archivo se leen día/mes/año.
-- Las cargas de QA, DSAT e incidencias reemplazan el rango de fechas seleccionado.
-- El archivo QA puede incluir varias hojas; la carga localiza automáticamente la hoja mensual con CLAVE, Id Coach, Nota Final, Fecha Monitoreo y Type QA. Validado con QA_FINAL_JUNIO_2026.xlsx.
+- qa_evaluaciones (QA_FINAL), csat_respuestas (fuente del DSAT), incidencias (INCIDENCIAS).
+- QA usa Nota Final y Fecha Monitoreo; fechas día/mes/año.
+- El archivo QA puede incluir varias hojas; se localiza la hoja con CLAVE, Id Coach, Nota Final, Fecha Monitoreo y Type QA.

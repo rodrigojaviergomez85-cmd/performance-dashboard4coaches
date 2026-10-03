@@ -49,55 +49,98 @@ const cargaSchema = z.object({
   filas: z.array(filaSchema).min(1).max(5000),
 });
 
-/**
- * Reemplaza la lista de coaches con la del archivo cargado.
- * Los coaches que ya no aparecen se eliminan. Las cuentas de
- * administración y revisión no se tocan.
- */
-export const sincronizarCoaches = createServerFn({ method: "POST" })
+const sincronizarSchema = cargaSchema.extend({ desactivarAusentes: z.boolean() });
+
+function normalizar(filas: z.infer<typeof filaSchema>[]) {
+  const porId = new Map<number, z.infer<typeof filaSchema>>();
+  for (const fila of filas) porId.set(fila.coach_id, fila);
+  return [...porId.values()].map((f) => ({
+    coach_id: f.coach_id,
+    nombre: f.nombre.trim(),
+    email: (f.email || `sin-correo-${f.coach_id}@e4cc.local`).trim().toLowerCase(),
+    pais: f.pais,
+    sucursal: f.sucursal,
+    id_coordinador: f.id_coordinador,
+    coordinador: f.coordinador,
+    estado: f.estado,
+    categoria: f.categoria,
+    tenure: f.tenure,
+  }));
+}
+
+/** Impacto de la sincronización, sin modificar nada. */
+export const previsualizarCoaches = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => cargaSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const filas = normalizar(data.filas);
+    const { data: actuales, error } = await supabaseAdmin
+      .from("coaches")
+      .select("coach_id, rol, activo");
+    if (error) throw new Error(error.message);
+
+    const enArchivo = new Set(filas.map((f) => f.coach_id));
+    const porId = new Map((actuales ?? []).map((c) => [c.coach_id, c]));
+    let nuevos = 0, actualizados = 0, protegidos = 0, inactivosEnArchivo = 0;
+    for (const f of filas) {
+      const c = porId.get(f.coach_id);
+      if (!c) nuevos++;
+      else if (c.rol !== "coach") protegidos++;
+      else {
+        actualizados++;
+        if (!c.activo) inactivosEnArchivo++;
+      }
+    }
+    const activos = (actuales ?? []).filter((c) => c.rol === "coach" && c.activo);
+    const ausentes = activos.filter((c) => !enArchivo.has(c.coach_id)).length;
+    return { enArchivo: filas.length, nuevos, actualizados, protegidos, inactivosEnArchivo, ausentes, activos: activos.length };
+  });
+
+/**
+ * Sincroniza el directorio en una sola transacción. No cambia roles, no
+ * reactiva cuentas desactivadas y nunca borra: los ausentes se desactivan
+ * solo si el administrador lo confirma. Los vínculos de acceso se conservan.
+ */
+export const sincronizarCoaches = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => sincronizarSchema.parse(input))
+  .handler(async ({ data, context }) => {
     const actor = await exigirAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const porId = new Map<number, (typeof data.filas)[number]>();
-    for (const fila of data.filas) porId.set(fila.coach_id, fila);
-
-    const filas = [...porId.values()].map((f) => ({
-      coach_id: f.coach_id,
-      nombre: f.nombre.trim(),
-      email: (f.email || `sin-correo-${f.coach_id}@e4cc.local`).trim().toLowerCase(),
-      pais: f.pais,
-      sucursal: f.sucursal,
-      id_coordinador: f.id_coordinador,
-      coordinador: f.coordinador,
-      estado: f.estado,
-      categoria: f.categoria,
-      tenure: f.tenure,
-      rol: "coach",
-      activo: true,
-    }));
-
-    const { error: errorUpsert } = await supabaseAdmin
-      .from("coaches")
-      .upsert(filas, { onConflict: "coach_id" });
-    if (errorUpsert) throw new Error(errorUpsert.message);
-
-    const ids = filas.map((f) => f.coach_id);
-    const { data: eliminados, error: errorDelete } = await supabaseAdmin
-      .from("coaches")
-      .delete()
-      .eq("rol", "coach")
-      .not("coach_id", "in", `(${ids.join(",")})`)
-      .select("coach_id");
-    if (errorDelete) throw new Error(errorDelete.message);
-
-    await supabaseAdmin.from("auditoria").insert({
-      actor_id: actor.id,
-      accion: "carga_lista_coaches",
-      detalle: { cargados: filas.length, eliminados: eliminados?.length ?? 0 },
+    const { data: r, error } = await (supabaseAdmin as any).rpc("sincronizar_coaches", {
+      _filas: normalizar(data.filas),
+      _desactivar: data.desactivarAusentes,
+      _actor: actor.id,
     });
+    if (error) throw new Error(`No se aplicó ningún cambio: ${error.message}`);
+    return r as { nuevos: number; actualizados: number; desactivados: number };
+  });
 
-    return { cargados: filas.length, eliminados: eliminados?.length ?? 0 };
+const estadoSchema = z.object({ id: z.string().uuid(), activo: z.boolean() });
+
+/** Activación o desactivación manual de un coach (no aplica a admin ni revisión). */
+export const cambiarEstadoCoach = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => estadoSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const actor = await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: fila, error } = await supabaseAdmin
+      .from("coaches")
+      .update({ activo: data.activo })
+      .eq("id", data.id)
+      .eq("rol", "coach")
+      .select("coach_id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!fila) throw new Error("Coach no encontrado.");
+    const { error: errorAud } = await supabaseAdmin.from("auditoria").insert({
+      actor_id: actor.id,
+      accion: data.activo ? "reactivar_coach" : "desactivar_coach",
+      detalle: { coach_id: fila.coach_id },
+    });
+    if (errorAud) throw new Error(errorAud.message);
+    return { ok: true as const };
   });
