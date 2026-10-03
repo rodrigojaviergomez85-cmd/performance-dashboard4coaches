@@ -278,7 +278,10 @@ export const listarAcademico = createServerFn({ method: "POST" })
       .range(desde, desde + data.porPagina - 1);
     if (error) throw new Error(error.message);
 
-    return { filas: (filas ?? []) as Record<string, unknown>[], total: count ?? 0 };
+    return {
+      filas: (filas ?? []) as Record<string, string | number | null>[],
+      total: Number(count ?? 0),
+    };
   });
 
 const entradaOpciones = z.object({ tabla: tablaSchema, desde: fechaIso, hasta: fechaIso });
