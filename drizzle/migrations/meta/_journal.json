@@ -43,6 +43,13 @@
       "when": 1790013630123,
       "tag": "0005_tablas_academicas_segun_archivos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791050064145,
+      "tag": "0006_mejora_continua",
+      "breakpoints": true
     }
   ]
 }

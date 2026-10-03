@@ -464,6 +464,48 @@ export type Database = {
         }
         Relationships: []
       }
+      materiales_mejora: {
+        Row: {
+          creado: string
+          descripcion: string | null
+          id: string
+          mes: string
+          mime: string | null
+          nombre_archivo: string
+          ruta: string
+          subido_por: string | null
+          tamano: number | null
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          creado?: string
+          descripcion?: string | null
+          id?: string
+          mes: string
+          mime?: string | null
+          nombre_archivo: string
+          ruta: string
+          subido_por?: string | null
+          tamano?: number | null
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          creado?: string
+          descripcion?: string | null
+          id?: string
+          mes?: string
+          mime?: string | null
+          nombre_archivo?: string
+          ruta?: string
+          subido_por?: string | null
+          tamano?: number | null
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       nl_evals: {
         Row: {
           class_id: number
