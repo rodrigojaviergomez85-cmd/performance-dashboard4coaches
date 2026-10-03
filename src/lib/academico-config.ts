@@ -1,4 +1,8 @@
-import { entero, fecha, fechaDiaMes, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { entero, fecha, fechaDiaMes, invalido, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+
+/** Escalas observadas en los archivos reales: QA y CSAT van de 0 a 10. */
+export const ESCALA_NOTA = { min: 0, max: 10 } as const;
+const fueraDeEscala = (n: number | null) => n !== null && (n < ESCALA_NOTA.min || n > ESCALA_NOTA.max);
 
 export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness";
 
@@ -105,6 +109,13 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
         mesArchivo,
       );
       if (!f) return { problema: "Fecha Monitoreo inválida" };
+      const crudoCoach = primera(fila, ["id coach", "coach id"]);
+      const coachId = entero(crudoCoach);
+      if (coachId === null) return { problema: invalido(crudoCoach, coachId) ? "Id Coach inválido" : "Falta Id Coach" };
+      const nota = numero(fila["nota final"]);
+      if (invalido(fila["nota final"], nota) || fueraDeEscala(nota)) return { problema: "Nota Final inválida" };
+      const notaSuc = numero(fila["nota suc"]);
+      if (invalido(fila["nota suc"], notaSuc)) return { problema: "Nota Suc inválida" };
       return {
         registro: {
           month: texto(fila["month"]),
@@ -114,9 +125,9 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           sucursal: texto(fila["sucursal"]),
           quality_type: texto(fila["quality type"]),
           gerente: texto(fila["gerente"]),
-          coach_id: entero(primera(fila, ["id coach", "coach id"])),
+          coach_id: coachId,
           coach: texto(fila["coach"]),
-          nota_final: numero(fila["nota final"]),
+          nota_final: nota,
           level: texto(fila["level"]),
           horario: normalizarHorario(fila["horario"]),
           fecha_ingresado: fechaDiaMes(fila["fecha ingresado"], mesArchivo),
@@ -126,7 +137,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           area_mejora: texto(fila["area de mejora"]),
           type_qa: texto(fila["type qa"]),
           gerente2: texto(primera(fila, ["gerente2", "gerente.1", "gerente_1"])),
-          nota_suc: numero(fila["nota suc"]),
+          nota_suc: notaSuc,
           feedback_type: texto(fila["feedback type"]),
           comentario: texto(fila["comentario"]),
           applicable: 1,
@@ -182,8 +193,13 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     busqueda: ["teacher_id", "evaluating_coach", "trainee_name", "token"],
     mapear: (fila, extra) => {
       if (!extra.mes) return { problema: "Falta el mes" };
-      const teacher = entero(primera(fila, ["idcoach", "id coach", "coach id"]));
-      if (teacher === null) return { problema: "Falta IDCOACH" };
+      const crudoTeacher = primera(fila, ["idcoach", "id coach", "coach id"]);
+      const teacher = entero(crudoTeacher);
+      if (teacher === null) return { problema: invalido(crudoTeacher, teacher) ? "IDCOACH inválido" : "Falta IDCOACH" };
+      const score = numero(fila["csat coach score"]);
+      if (invalido(fila["csat coach score"], score) || fueraDeEscala(score))
+        return { problema: "CSAT Coach Score inválido" };
+      if (invalido(fila["submitted at"], marca(fila["submitted at"]))) return { problema: "Submitted At inválido" };
       return {
         registro: {
           period_month: `${extra.mes}-01`,
@@ -194,7 +210,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           evaluating_coach: texto(fila["evaluating coach"]),
           diferenciador_coach: texto(fila["diferenciador coach"]),
           tenure: texto(fila["tenure"]),
-          coach_score: numero(fila["csat coach score"]),
+          coach_score: score,
           coach_comment: texto(fila["coach comment"]),
           categoria: texto(fila["categoria"]),
           sub_categoria: texto(fila["sub-categoria"]),
@@ -259,8 +275,9 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     mapear: (fila) => {
       const f = fecha(primera(fila, ["fecha", "date", "class date"]));
       if (!f) return { problema: "Fecha inválida" };
-      const clase = entero(primera(fila, ["class id", "clase", "clase id"]));
-      if (clase === null) return { problema: "Falta Class ID" };
+      const crudoClase = primera(fila, ["class id", "clase", "clase id"]);
+      const clase = entero(crudoClase);
+      if (clase === null) return { problema: invalido(crudoClase, clase) ? "Class ID inválido" : "Falta Class ID" };
       const resultado = texto(primera(fila, ["resultado", "result", "status"]));
       return {
         registro: {
@@ -321,6 +338,9 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     mapear: (fila) => {
       const f = fecha(fila["fecha"]);
       if (!f) return { problema: "Fecha inválida" };
+      const crudoCoach = primera(fila, ["id coach", "coach id"]);
+      const coachId = entero(crudoCoach);
+      if (coachId === null) return { problema: invalido(crudoCoach, coachId) ? "Id Coach inválido" : "Falta Id Coach" };
       return {
         registro: {
           curso: texto(fila["curso"]),
@@ -335,7 +355,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           otros_motivos: texto(fila["otros motivos"]),
           otros_motivos_2: texto(fila["otros motivos 2"]),
           coordinador: texto(fila["coordinador"]),
-          coach_id: entero(primera(fila, ["id coach", "coach id"])),
+          coach_id: coachId,
           coach_asignado: texto(fila["coach asignado"]),
           coach_cubre: texto(fila["coach que cubre"]),
           horas_asignadas: numero(fila["horas asignadas"]),
@@ -373,8 +393,9 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     mapear: (fila) => {
       const f = fecha(primera(fila, ["fecha", "date"]));
       if (!f) return { problema: "Fecha inválida" };
-      const teacher = entero(primera(fila, ["teacher id", "id coach", "coach id"]));
-      if (teacher === null) return { problema: "Falta Teacher ID" };
+      const crudoTeacher = primera(fila, ["teacher id", "id coach", "coach id"]);
+      const teacher = entero(crudoTeacher);
+      if (teacher === null) return { problema: invalido(crudoTeacher, teacher) ? "Teacher ID inválido" : "Falta Teacher ID" };
       return {
         registro: {
           fecha: f,
