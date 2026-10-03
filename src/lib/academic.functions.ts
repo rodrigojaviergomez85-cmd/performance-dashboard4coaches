@@ -157,7 +157,9 @@ async function todasLasFilas<T>(construir: () => any): Promise<T[]> {
   const total: T[] = [];
   const tamano = 1000;
   for (let desde = 0; ; desde += tamano) {
-    const { data, error } = await construir().range(desde, desde + tamano - 1);
+    const { data, error } = await construir()
+      .order("id", { ascending: true })
+      .range(desde, desde + tamano - 1);
     if (error) throw new Error(error.message);
     const lote = (data ?? []) as T[];
     total.push(...lote);
