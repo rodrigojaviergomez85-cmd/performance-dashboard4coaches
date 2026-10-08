@@ -734,6 +734,42 @@ export type Database = {
         }
         Relationships: []
       }
+      qa_periods: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          label: string
+          month: number
+          start_date: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          label: string
+          month: number
+          start_date: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          month?: number
+          start_date?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       revisiones: {
         Row: {
           actualizado: string
