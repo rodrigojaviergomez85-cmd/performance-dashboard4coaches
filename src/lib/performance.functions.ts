@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { mesQaDeFecha, type PeriodoQa } from "@/lib/periodos-qa";
 import {
   QA_ADVERTENCIA,
   QA_BLOQUEO,
@@ -45,6 +46,18 @@ const puedeElegirCoach = (rol: string) => rol === "admin" || rol === "revisor";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const mesInicio = (y: number, m: number) => iso(new Date(Date.UTC(y, m - 1, 1)));
+
+// QA se agrupa por período QA (no por mes calendario); se leen ~45 días extra a cada lado.
+const qaDesde = (y: number) => `${y - 1}-11-15`;
+const qaHasta = (y: number) => `${y + 1}-02-15`;
+async function leerPeriodosQa(admin: any): Promise<PeriodoQa[]> {
+  const { data, error } = await admin
+    .from("qa_periods")
+    .select("id, label, month, year, start_date, end_date")
+    .eq("is_active", true);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -128,9 +141,14 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         .select("fecha_monitoreo, nota_final")
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("fecha_monitoreo", mesInicio(data.year, 1))
-        .lt("fecha_monitoreo", mesInicio(data.year + 1, 1)),
+        .gte("fecha_monitoreo", qaDesde(data.year))
+        .lt("fecha_monitoreo", qaHasta(data.year)),
     );
+    const periodosQa = await leerPeriodosQa(supabaseAdmin);
+    const qaMes = (f: string) => {
+      const m = mesQaDeFecha(periodosQa, f);
+      return m.year === data.year ? m.month : 0;
+    };
 
     const abs = await todasLasFilas<{ fecha: string }>(() =>
       supabaseAdmin
@@ -183,7 +201,12 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const denomTrimestre = dsatTrimestre.denominador;
 
     const qaTrimestre = promedioQa(
-      qa.filter((q) => enRango(q.fecha_monitoreo)).map((q) => q.nota_final),
+      qa
+        .filter((q) => {
+          const m = qaMes(q.fecha_monitoreo);
+          return m >= inicioMes && m < inicioMes + 3;
+        })
+        .map((q) => q.nota_final),
     );
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
@@ -203,7 +226,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const anual = Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1;
       const d = dsatDeMes(mes);
-      const q = promedioQa(qa.filter((x) => mesDe(x.fecha_monitoreo) === mes).map((x) => x.nota_final));
+      const q = promedioQa(qa.filter((x) => qaMes(x.fecha_monitoreo) === mes).map((x) => x.nota_final));
       const filasNl = nl.filter((x) => mesDe(x.fecha) === mes);
       const ev = filasNl.filter((x) => (x.resultado ?? "") !== "Pending").length;
       const ap = filasNl.filter((x) => x.resultado === "Approved").length;
@@ -377,8 +400,6 @@ export const detalleQa = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const inicioMes = (data.quarter - 1) * 3 + 1;
-    const inicio = mesInicio(data.year, inicioMes);
-    const fin = inicioMes + 3 > 12 ? mesInicio(data.year + 1, 1) : mesInicio(data.year, inicioMes + 3);
 
     const filas = await todasLasFilas<any>(() =>
       supabaseAdmin
@@ -388,10 +409,17 @@ export const detalleQa = createServerFn({ method: "POST" })
         )
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("fecha_monitoreo", inicio)
-        .lt("fecha_monitoreo", fin)
-        .order("fecha_monitoreo", { ascending: false }),
-    );
+        .gte("fecha_monitoreo", qaDesde(data.year))
+        .lt("fecha_monitoreo", qaHasta(data.year))
+        .order("fecha_monitoreo", { ascending: false })
+        .order("id", { ascending: true }),
+    ).then(async (todas) => {
+      const periodosQa = await leerPeriodosQa(supabaseAdmin);
+      return todas.filter((f: any) => {
+        const m = mesQaDeFecha(periodosQa, f.fecha_monitoreo);
+        return m.year === data.year && m.month >= inicioMes && m.month < inicioMes + 3;
+      });
+    });
 
     // Misma función que el panel: excluye notas vacías.
     const prom = promedioQa(filas.map((f) => f.nota_final));

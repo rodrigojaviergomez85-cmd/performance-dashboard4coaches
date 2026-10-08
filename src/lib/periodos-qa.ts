@@ -32,3 +32,9 @@ export function hoyLocal(d = new Date()) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+/** Mes QA de una evaluación: el del período que contiene la fecha; sin período, el mes calendario. */
+export function mesQaDeFecha(periodos: PeriodoQa[], fecha: string): { year: number; month: number } {
+  const p = periodoDeFecha(periodos, fecha);
+  return p ? { year: p.year, month: p.month } : { year: Number(fecha.slice(0, 4)), month: Number(fecha.slice(5, 7)) };
+}
