@@ -171,6 +171,19 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-end gap-3">
+        {esQa ? (
+          <SelectorPeriodoQa
+            alCambiar={(r) => {
+              const d = r?.desde ?? "", h = r?.hasta ?? "";
+              if (d !== desde || h !== hasta) {
+                setDesde(d);
+                setHasta(h);
+                setPagina(0);
+              }
+            }}
+          />
+        ) : (
+        <>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Desde</Label>
           <Input
@@ -195,6 +208,8 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
             className="h-9 w-40 text-sm"
           />
         </div>
+        </>
+        )}
         <Input
           placeholder="Buscar coach"
           value={busqueda}
