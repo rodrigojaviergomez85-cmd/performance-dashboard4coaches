@@ -400,8 +400,6 @@ export const detalleQa = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const inicioMes = (data.quarter - 1) * 3 + 1;
-    const inicio = mesInicio(data.year, inicioMes);
-    const fin = inicioMes + 3 > 12 ? mesInicio(data.year + 1, 1) : mesInicio(data.year, inicioMes + 3);
 
     const filas = await todasLasFilas<any>(() =>
       supabaseAdmin
