@@ -369,7 +369,7 @@ export const cargarAcademico = createServerFn({ method: "POST" })
 
     // Lotes para no superar el tiempo máximo por instrucción; solo el primero reemplaza el rango.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const LOTE = 1500;
+    const LOTE = 1000;
     const tot = { insertadas: 0, omitidas: 0, borradas: 0 };
     for (let i = 0; i === 0 || i < unicas.length; i += LOTE) {
       const { data: r, error } = await (supabaseAdmin as any).rpc("cargar_academico", {
