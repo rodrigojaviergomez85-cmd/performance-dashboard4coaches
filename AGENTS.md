@@ -14,3 +14,4 @@
 - Coach directory sync goes through `sincronizar_coaches` (service_role only) and never changes roles, reactivates accounts or deletes rows, because imported files can be incomplete.
 - Dashboard calculations live in pure `src/lib/reglas.ts` with Vitest tests, so panel and detail views share one definition.
 - Multi-page Data API reads always order by a unique id, because unordered range pagination can skip or repeat rows.
+- QA in Academic Performance filters by `qa_periods` (non-overlapping inclusive date ranges on `fecha_monitoreo`) instead of free Desde/Hasta, because QA reporting periods do not follow calendar months; stored QA dates are never rewritten.

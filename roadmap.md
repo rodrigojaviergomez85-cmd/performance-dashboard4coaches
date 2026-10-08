@@ -34,3 +34,7 @@ Decisiones confirmadas:
 - qa_evaluaciones (QA_FINAL), csat_respuestas (fuente del DSAT), incidencias (INCIDENCIAS).
 - QA usa Nota Final y Fecha Monitoreo; fechas día/mes/año.
 - El archivo QA puede incluir varias hojas; se localiza la hoja con CLAVE, Id Coach, Nota Final, Fecha Monitoreo y Type QA.
+
+# Períodos QA
+- [x] Tabla qa_periods, selector Período QA y configuración en la pestaña QA
+- [ ] Confirmar si el Performance Dashboard también debe agrupar QA por Período QA

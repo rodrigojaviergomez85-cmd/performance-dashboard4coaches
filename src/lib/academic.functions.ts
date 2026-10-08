@@ -450,3 +450,62 @@ export const actualizarApplicable = createServerFn({ method: "POST" })
 
     return { ok: true as const };
   });
+
+/* ---------- Períodos QA (solo QA; agrupan por fecha_monitoreo sin tocar datos) ---------- */
+
+const periodoSchema = z.object({
+  id: z.string().uuid().optional(),
+  label: z.string().trim().min(1).max(80),
+  month: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000).max(2100),
+  start_date: fechaIso,
+  end_date: fechaIso,
+}).refine((p) => p.end_date >= p.start_date, { message: "La fecha fin debe ser igual o posterior a la fecha inicio." });
+
+export const listarPeriodosQa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("qa_periods")
+      .select("id, label, month, year, start_date, end_date")
+      .eq("is_active", true)
+      .order("start_date", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const guardarPeriodoQa = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => periodoSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const actor = await exigirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { seSolapan } = await import("@/lib/periodos-qa");
+
+    const { data: existentes, error: e1 } = await supabaseAdmin
+      .from("qa_periods")
+      .select("id, label, start_date, end_date");
+    if (e1) throw new Error(e1.message);
+    const choque = (existentes ?? []).find((p) => p.id !== data.id && seSolapan(p, data));
+    if (choque) {
+      throw new Error(`Se solapa con "${choque.label}" (${choque.start_date} a ${choque.end_date}).`);
+    }
+
+    const valores = {
+      label: data.label, month: data.month, year: data.year,
+      start_date: data.start_date, end_date: data.end_date, updated_at: new Date().toISOString(),
+    };
+    const { error } = data.id
+      ? await supabaseAdmin.from("qa_periods").update(valores).eq("id", data.id)
+      : await supabaseAdmin.from("qa_periods").insert(valores);
+    if (error) {
+      if (error.code === "23P01") throw new Error("El período se solapa con otro período QA.");
+      throw new Error(error.message);
+    }
+    await supabaseAdmin.from("auditoria").insert({
+      actor_id: actor.id, accion: data.id ? "editar_periodo_qa" : "crear_periodo_qa", detalle: valores,
+    });
+    return { ok: true };
+  });

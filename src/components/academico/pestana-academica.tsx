@@ -13,6 +13,7 @@ import {
 import type { ConfigPestana } from "@/lib/academico-config";
 import { leerHoja, rangoMesActual } from "@/lib/hoja-calculo";
 import { MultiFiltro } from "@/components/multi-filtro";
+import { SelectorPeriodoQa } from "@/components/academico/periodos-qa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +50,10 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   const entradaArchivo = useRef<HTMLInputElement>(null);
 
   const inicial = rangoMesActual();
-  const [desde, setDesde] = useState(inicial.desde);
-  const [hasta, setHasta] = useState(inicial.hasta);
+  // QA toma su rango del Período QA seleccionado; las demás pestañas siguen con Desde/Hasta.
+  const esQa = config.clave === "qa";
+  const [desde, setDesde] = useState(esQa ? "" : inicial.desde);
+  const [hasta, setHasta] = useState(esQa ? "" : inicial.hasta);
   const [busqueda, setBusqueda] = useState("");
   const [filtros, setFiltros] = useState<Record<string, string[]>>({});
   const [pagina, setPagina] = useState(0);
@@ -171,6 +174,19 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   return (
     <div className="space-y-4 rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-end gap-3">
+        {esQa ? (
+          <SelectorPeriodoQa
+            alCambiar={(r) => {
+              const d = r?.desde ?? "", h = r?.hasta ?? "";
+              if (d !== desde || h !== hasta) {
+                setDesde(d);
+                setHasta(h);
+                setPagina(0);
+              }
+            }}
+          />
+        ) : (
+        <>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Desde</Label>
           <Input
@@ -195,6 +211,8 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
             className="h-9 w-40 text-sm"
           />
         </div>
+        </>
+        )}
         <Input
           placeholder="Buscar coach"
           value={busqueda}
@@ -392,7 +410,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba.
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 
@@ -417,7 +435,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
               Cancelar
             </Button>
             <Button
-              disabled={!vista || carga.isPending || desde > hasta}
+              disabled={!vista || carga.isPending || !desde || desde > hasta}
               onClick={() => vista && carga.mutate(vista.registros)}
               title={desde > hasta ? "Rango de fechas inválido" : undefined}
             >
