@@ -410,7 +410,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba.
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 
@@ -435,7 +435,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
               Cancelar
             </Button>
             <Button
-              disabled={!vista || carga.isPending || desde > hasta}
+              disabled={!vista || carga.isPending || !desde || desde > hasta}
               onClick={() => vista && carga.mutate(vista.registros)}
               title={desde > hasta ? "Rango de fechas inválido" : undefined}
             >
