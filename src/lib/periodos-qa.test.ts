@@ -25,3 +25,14 @@ describe("períodos QA", () => {
     expect(periodoPorDefecto([sep, oct], "2027-01-10")?.id).toBe("o");
   });
 });
+
+import { mesQaDeFecha } from "./periodos-qa";
+describe("mesQaDeFecha", () => {
+  const sep = { id: "1", label: "Septiembre 2026", month: 9, year: 2026, start_date: "2026-09-01", end_date: "2026-10-04" };
+  it("una fecha de octubre dentro del período de septiembre cuenta como septiembre", () => {
+    expect(mesQaDeFecha([sep], "2026-10-02")).toEqual({ year: 2026, month: 9 });
+  });
+  it("sin período usa el mes calendario", () => {
+    expect(mesQaDeFecha([sep], "2026-10-05")).toEqual({ year: 2026, month: 10 });
+  });
+});
