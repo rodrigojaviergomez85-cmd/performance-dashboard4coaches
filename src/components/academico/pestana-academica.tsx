@@ -13,6 +13,7 @@ import {
 import type { ConfigPestana } from "@/lib/academico-config";
 import { leerHoja, rangoMesActual } from "@/lib/hoja-calculo";
 import { MultiFiltro } from "@/components/multi-filtro";
+import { SelectorPeriodoQa } from "@/components/academico/periodos-qa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +50,10 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   const entradaArchivo = useRef<HTMLInputElement>(null);
 
   const inicial = rangoMesActual();
-  const [desde, setDesde] = useState(inicial.desde);
-  const [hasta, setHasta] = useState(inicial.hasta);
+  // QA toma su rango del Período QA seleccionado; las demás pestañas siguen con Desde/Hasta.
+  const esQa = config.clave === "qa";
+  const [desde, setDesde] = useState(esQa ? "" : inicial.desde);
+  const [hasta, setHasta] = useState(esQa ? "" : inicial.hasta);
   const [busqueda, setBusqueda] = useState("");
   const [filtros, setFiltros] = useState<Record<string, string[]>>({});
   const [pagina, setPagina] = useState(0);
