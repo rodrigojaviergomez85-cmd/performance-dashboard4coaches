@@ -367,24 +367,37 @@ export const cargarAcademico = createServerFn({ method: "POST" })
       return true;
     });
 
-    // Reemplazo, inserción y auditoría en una sola transacción.
+    // Lotes para no superar el tiempo máximo por instrucción; solo el primero reemplaza el rango.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: r, error } = await (supabaseAdmin as any).rpc("cargar_academico", {
-      _tabla: tabla,
-      _filas: unicas,
-      _reemplazar: data.reemplazarRango ?? false,
-      _desde: data.desde,
-      _hasta: data.hasta,
-      _actor: actor.id,
-    });
-    if (error) throw new Error(`No se guardó nada: ${error.message}`);
+    const LOTE = 1000;
+    const tot = { insertadas: 0, omitidas: 0, borradas: 0 };
+    for (let i = 0; i === 0 || i < unicas.length; i += LOTE) {
+      const { data: r, error } = await (supabaseAdmin as any).rpc("cargar_academico", {
+        _tabla: tabla,
+        _filas: unicas.slice(i, i + LOTE),
+        _reemplazar: i === 0 ? (data.reemplazarRango ?? false) : false,
+        _desde: data.desde,
+        _hasta: data.hasta,
+        _actor: actor.id,
+      });
+      if (error) {
+        throw new Error(
+          i === 0
+            ? `No se guardó nada: ${error.message}`
+            : `Carga incompleta (${tot.insertadas} filas guardadas). Vuelva a subir el archivo con "reemplazar": ${error.message}`,
+        );
+      }
+      const res = r as { insertadas: number; omitidas: number; borradas: number };
+      tot.insertadas += res.insertadas;
+      tot.omitidas += res.omitidas;
+      tot.borradas += res.borradas;
+    }
 
-    const res = r as { insertadas: number; omitidas: number; borradas: number };
     return {
       ok: true as const,
-      insertadas: res.insertadas,
-      omitidas: res.omitidas + (limpias.length - unicas.length),
-      borradas: res.borradas,
+      insertadas: tot.insertadas,
+      omitidas: tot.omitidas + (limpias.length - unicas.length),
+      borradas: tot.borradas,
     };
   });
 
