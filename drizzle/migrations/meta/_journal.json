@@ -57,13 +57,6 @@
       "when": 1791051176139,
       "tag": "0007_confiabilidad_cargas_y_accesos",
       "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1791051177139,
-      "tag": "0008_carga_rapida_indices_unicos",
-      "breakpoints": true
     }
   ]
 }
