@@ -36,7 +36,7 @@ export function SelectorPeriodoQa({ alCambiar }: { alCambiar: (rango: { desde: s
     <>
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">Período QA</Label>
-        <Select value={id ?? undefined} onValueChange={setId}>
+        <Select value={id ?? ""} onValueChange={setId}>
           <SelectTrigger className="h-9 w-56 text-sm">
             <SelectValue placeholder={isLoading ? "Cargando…" : "Sin períodos"} />
           </SelectTrigger>
