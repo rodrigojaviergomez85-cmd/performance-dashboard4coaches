@@ -347,7 +347,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
     let consulta = supabaseAdmin
       .from("csat_respuestas")
       .select(
-        "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, razon_no_aplica",
+        "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, tenure_aplica, razon_no_aplica",
         { count: "exact" },
       )
       .eq("teacher_id", coachId)
