@@ -321,7 +321,7 @@ function PerformanceDashboard() {
             <p className="text-[10px] text-muted-foreground">Average QA score by QA period · minimum average 7.5</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[...data.qaMeses.map((m) => ({ ...m, total: false })), { ...data.qaTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }].map((m) => (
+            {[...(data.qaMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.qaTotal ? [{ ...data.qaTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
               <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.promedio === null ? "scorecard-empty" : m.bloqueado ? "scorecard-bad" : "scorecard-great")}>
                 <p className="scorecard-label">{m.etiqueta}</p>
                 <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.promedio === null ? "—" : m.promedio.toFixed(2)}</p>
