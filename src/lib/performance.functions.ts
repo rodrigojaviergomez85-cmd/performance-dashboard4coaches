@@ -94,6 +94,18 @@ async function coachObjetivo(context: Contexto, solicitado: number | null | unde
   return { perfil, coachId: solicitado, esPropio: false };
 }
 
+/**
+ * CSAT se atribuye por el nombre del coach (coach_aplica), no por teacher_id:
+ * los archivos usan IDs con ceros extra para separar sucursales y a veces
+ * traen IDs arrastrados de otra fila. Sin nombre en el directorio, usa el ID.
+ */
+async function filtroCsat(admin: any, coachId: number) {
+  const { data } = await admin.from("coaches").select("nombre").eq("coach_id", coachId).maybeSingle();
+  const nombre = (data?.nombre ?? "").trim().replace(/[%_\\]/g, "");
+  return <Q extends { ilike: any; eq: any }>(q: Q): Q =>
+    nombre ? q.ilike("coach_aplica", nombre) : q.eq("teacher_id", coachId);
+}
+
 export const panelDesempeno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => entradaPanel.parse(input))
@@ -123,6 +135,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       inicioMes - 3 < 1 ? mesInicio(data.year - 1, inicioMes + 9) : mesInicio(data.year, inicioMes - 3);
 
     // DSAT del año completo: sirve para el trimestre y para la vista anual.
+    const porCoach = await filtroCsat(supabaseAdmin, coachId);
     const dsat = await todasLasFilas<{
       period_month: string;
       aplica_coach: string | null;
@@ -130,10 +143,11 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       coach_score: number | null;
     }>(
       () =>
-        supabaseAdmin
-          .from("csat_respuestas")
-          .select("id, period_month, aplica_coach, tenure_aplica, coach_score")
-          .eq("teacher_id", coachId)
+        porCoach(
+          supabaseAdmin
+            .from("csat_respuestas")
+            .select("id, period_month, aplica_coach, tenure_aplica, coach_score"),
+        )
           .gte("period_month", mesInicio(data.year, 1))
           .lt("period_month", mesInicio(data.year + 1, 1)),
     );
@@ -337,22 +351,21 @@ export const comentariosCsat = createServerFn({ method: "POST" })
     // Opciones de filtro: solo dos columnas del trimestre completo.
     const trimestreFin =
       inicioMes + 3 > 12 ? mesInicio(data.year + 1, 1) : mesInicio(data.year, inicioMes + 3);
+    const porCoach = await filtroCsat(supabaseAdmin, coachId);
     const opciones = await todasLasFilas<{ curso: string | null; salon: string | null }>(() =>
-      supabaseAdmin
-        .from("csat_respuestas")
-        .select("curso, salon")
-        .eq("teacher_id", coachId)
+      porCoach(supabaseAdmin.from("csat_respuestas").select("curso, salon"))
         .gte("period_month", mesInicio(data.year, inicioMes))
         .lt("period_month", trimestreFin),
     );
 
-    let consulta = supabaseAdmin
-      .from("csat_respuestas")
-      .select(
-        "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, tenure_aplica, razon_no_aplica",
-        { count: "exact" },
-      )
-      .eq("teacher_id", coachId)
+    let consulta = porCoach(
+      supabaseAdmin
+        .from("csat_respuestas")
+        .select(
+          "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, tenure_aplica, razon_no_aplica",
+          { count: "exact" },
+        ),
+    )
       .gte("period_month", inicio)
       .lt("period_month", fin)
       .or("experiencia_comment.not.is.null,coach_comment.not.is.null");
