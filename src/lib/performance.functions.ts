@@ -124,12 +124,13 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const dsat = await todasLasFilas<{
       period_month: string;
       aplica_coach: string | null;
+      tenure_aplica: string | null;
       coach_score: number | null;
     }>(
       () =>
         supabaseAdmin
           .from("csat_respuestas")
-          .select("period_month, aplica_coach, coach_score")
+          .select("id, period_month, aplica_coach, tenure_aplica, coach_score")
           .eq("teacher_id", coachId)
           .gte("period_month", mesInicio(data.year, 1))
           .lt("period_month", mesInicio(data.year + 1, 1)),
@@ -374,8 +375,10 @@ export const comentariosCsat = createServerFn({ method: "POST" })
         experience_comment: f.experiencia_comment,
         coach_comment: f.coach_comment,
         coach_score: f.coach_score,
-        cuenta: !(f.aplica_coach ?? "").trim() && f.coach_score !== null,
-        razon_no_cuenta: f.razon_no_aplica ?? f.aplica_coach,
+        cuenta: cuentaDsat(f),
+        razon_no_cuenta:
+          f.razon_no_aplica ??
+          ((f.aplica_coach ?? "").trim() ? f.aplica_coach : !esMasDeUnaSemana(f.tenure_aplica) ? (f.tenure_aplica ?? "Sin tenure") : null),
       })),
       total: count ?? 0,
       pagina: data.pagina,

@@ -56,11 +56,22 @@ describe("QA", () => {
 
 describe("DSAT", () => {
   it("cuenta solo Aplica Coach en blanco y con nota", () => {
+    const t = "Más de 1 Semana";
     const r = calcularDsat([
-      { aplica_coach: null, coach_score: 8 },
-      { aplica_coach: "", coach_score: 10 },
-      { aplica_coach: "NO APLICA COACH", coach_score: 1 },
-      { aplica_coach: null, coach_score: null },
+      { aplica_coach: null, tenure_aplica: t, coach_score: 8 },
+      { aplica_coach: "", tenure_aplica: t, coach_score: 10 },
+      { aplica_coach: "NO APLICA COACH", tenure_aplica: t, coach_score: 1 },
+      { aplica_coach: null, tenure_aplica: t, coach_score: null },
+    ]);
+    expect(r).toEqual({ numerador: 1, denominador: 2, porcentaje: 50 });
+  });
+  it("cuenta solo encuestas de más de 1 semana", () => {
+    const r = calcularDsat([
+      { aplica_coach: null, tenure_aplica: "Más de 1 Semana", coach_score: 5 },
+      { aplica_coach: null, tenure_aplica: "Menos de 1 Semana", coach_score: 1 },
+      { aplica_coach: null, tenure_aplica: "TENURE NO ENCONTRADO", coach_score: 1 },
+      { aplica_coach: null, tenure_aplica: null, coach_score: 1 },
+      { aplica_coach: null, tenure_aplica: "MAS DE 1 SEMANA", coach_score: 10 },
     ]);
     expect(r).toEqual({ numerador: 1, denominador: 2, porcentaje: 50 });
   });

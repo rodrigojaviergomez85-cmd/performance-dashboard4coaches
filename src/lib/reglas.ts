@@ -43,15 +43,27 @@ export const QA_ADVERTENCIA = 7.8;
 
 export interface RespuestaDsat {
   aplica_coach: string | null;
+  tenure_aplica: string | null;
   coach_score: unknown;
 }
 
+/** El coach lleva más de 1 semana en la clase ("Más de 1 Semana"). */
+export const esMasDeUnaSemana = (t: string | null) =>
+  (t ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ") === "mas de 1 semana";
+
 /**
- * Una encuesta cuenta para DSAT cuando "Aplica Coach" está en blanco y tiene
- * nota. Las notas vacías no cuentan ni como negativas ni como positivas.
+ * Una encuesta cuenta para DSAT cuando "Aplica Coach" está en blanco, el coach
+ * lleva más de 1 semana en la clase y tiene nota.
  */
 export const cuentaDsat = (r: RespuestaDsat) =>
-  !(r.aplica_coach ?? "").trim() && notaValida(r.coach_score) !== null;
+  !(r.aplica_coach ?? "").trim() &&
+  esMasDeUnaSemana(r.tenure_aplica) &&
+  notaValida(r.coach_score) !== null;
 
 /** DSAT = encuestas que cuentan con nota <= 8 / encuestas que cuentan. */
 export function calcularDsat(respuestas: RespuestaDsat[]) {
