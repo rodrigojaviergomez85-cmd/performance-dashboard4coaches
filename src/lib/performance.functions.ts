@@ -11,6 +11,7 @@ import {
   cuentaDsat,
   esMasDeUnaSemana,
   fraseQa,
+  notaValida,
   promedioQa,
   rangoQa,
   redondear2,
@@ -217,14 +218,31 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const numTrimestre = dsatTrimestre.numerador;
     const denomTrimestre = dsatTrimestre.denominador;
 
-    const qaTrimestre = promedioQa(
-      qa
-        .filter((q) => {
-          const m = qaMes(q.fecha_monitoreo);
-          return m >= inicioMes && m < inicioMes + 3;
-        })
-        .map((q) => q.nota_final),
-    );
+    const notasQaTrimestre = qa
+      .filter((q) => {
+        const m = qaMes(q.fecha_monitoreo);
+        return m >= inicioMes && m < inicioMes + 3;
+      })
+      .map((q) => q.nota_final);
+    const qaTrimestre = promedioQa(notasQaTrimestre);
+    const resumenQa = (notas: unknown[]) => {
+      const p = promedioQa(notas);
+      return {
+        promedio: redondear2(p),
+        frase: fraseQa(p),
+        evaluaciones: notas.filter((n) => notaValida(n) !== null).length,
+        bloqueado: p !== null && p < QA_BLOQUEO,
+      };
+    };
+    const qaMeses = [0, 1, 2].map((n) => {
+      const mes = inicioMes + n;
+      return {
+        mes,
+        etiqueta: MESES[mes - 1]!,
+        ...resumenQa(qa.filter((q) => qaMes(q.fecha_monitoreo) === mes).map((q) => q.nota_final)),
+      };
+    });
+    const qaTotal = resumenQa(notasQaTrimestre);
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
 
@@ -282,6 +300,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         // (bloqueos, NL, mínimo de encuestas) siguen pendientes de confirmación.
         categoria: categoria(dsatTrimestre.porcentaje, superstar, great),
       },
+      qaMeses,
+      qaTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),
