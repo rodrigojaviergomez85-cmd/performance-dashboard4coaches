@@ -8,6 +8,8 @@ import {
   alertasPanel,
   calcularDsat,
   categoriaDsat as categoria,
+  cuentaDsat,
+  esMasDeUnaSemana,
   fraseQa,
   promedioQa,
   rangoQa,
