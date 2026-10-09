@@ -300,6 +300,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         // (bloqueos, NL, mínimo de encuestas) siguen pendientes de confirmación.
         categoria: categoria(dsatTrimestre.porcentaje, superstar, great),
       },
+      qaMeses,
+      qaTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),
