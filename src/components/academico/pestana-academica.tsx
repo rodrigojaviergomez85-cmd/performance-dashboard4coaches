@@ -142,12 +142,14 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
     if (!archivo) return;
 
     try {
+      const mesArchivo = (config.detectarMes && mesDesdeNombre(archivo.name, mes)) || mes;
+      if (mesArchivo !== mes) setMes(mesArchivo);
       const crudas = config.leer ? await config.leer(archivo) : await leerHoja(archivo, config.encabezadosRequeridos);
       const registros: Record<string, unknown>[] = [];
       const problemas: string[] = [];
 
       crudas.forEach((fila, i) => {
-        const r = config.mapear(fila, { mes, token: token.trim() || null });
+        const r = config.mapear(fila, { mes: mesArchivo, token: token.trim() || null });
         const f = r.registro ? String(r.registro[config.campoFecha] ?? "") : "";
         if (r.registro && config.reemplazarRango && !config.rangoDesdeArchivo && (f < desde || f > hasta)) {
           if (problemas.length < 20) problemas.push(`Fila ${i + 2}: fecha ${f} fuera del rango ${desde} a ${hasta}`);
@@ -424,7 +426,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
             {vista && (
               <div className="space-y-2">
                 <p className="text-sm text-foreground">
-                  {vista.registros.length} filas listas para guardar.{vista.rango ? ` Reemplaza del ${vista.rango.desde} al ${vista.rango.hasta}.` : ""}
+                  {vista.registros.length} filas listas para guardar.{vista.rango ? (config.detectarMes ? ` Mes: ${vista.rango.desde.slice(0, 7)}. Reemplaza los datos de ese mes.` : ` Reemplaza del ${vista.rango.desde} al ${vista.rango.hasta}.`) : ""}
                 </p>
                 {vista.problemas.length > 0 && (
                   <ul className="max-h-32 overflow-y-auto rounded-md border border-border p-2 text-xs text-muted-foreground">

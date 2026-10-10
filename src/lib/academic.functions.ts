@@ -136,6 +136,15 @@ const TABLAS = {
     clave: ["teacher_id", "fecha"],
     columnas: ["fecha", "teacher_id", "teacher_name", "coordinator", "senior", "late_count"],
   },
+  retention: {
+    nombre: "retencion",
+    fecha: "period_month",
+    clave: ["coach_id", "period_month"],
+    columnas: [
+      "period_month", "coach_id", "coach", "country", "sucursal", "do_count", "active_students",
+      "do_pct", "retention_pct", "fc_do", "fc_do_pct", "clv", "category",
+    ],
+  },
 } as const;
 
 type ClaveTabla = keyof typeof TABLAS;
@@ -168,7 +177,7 @@ async function todasLasFilas<T>(construir: () => any): Promise<T[]> {
   return total;
 }
 
-const tablaSchema = z.enum(["qa", "dsat", "nl", "abs", "lateness"]);
+const tablaSchema = z.enum(["qa", "dsat", "nl", "abs", "lateness", "retention"]);
 
 const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const nota = z.number().min(0).max(10).nullable();
@@ -216,6 +225,17 @@ const ESQUEMAS = {
     teacher_id: z.number().int(),
     late_count: z.number().int().min(1),
   }).catchall(txt),
+  retention: z.object({
+    period_month: fechaIso,
+    coach_id: z.number().int(),
+    do_count: z.number().nullable(),
+    active_students: z.number().nullable(),
+    do_pct: z.number().nullable(),
+    retention_pct: z.number().nullable(),
+    fc_do: z.number().nullable(),
+    fc_do_pct: z.number().nullable(),
+    clv: z.number().nullable(),
+  }).catchall(txt),
 } as const;
 
 const entradaLista = z.object({
@@ -235,6 +255,7 @@ const FILTRABLES: Record<ClaveTabla, { filtros: string[]; texto: string[]; numer
   nl: { filtros: ["syllabus", "level", "horario", "resultado"], texto: ["coach"], numero: ["coach_id"] },
   abs: { filtros: ["pais", "sucursal", "curso", "motivo", "tipo"], texto: ["coach_asignado", "coach_cubre", "coordinador"], numero: ["coach_id"] },
   lateness: { filtros: ["coordinator", "senior"], texto: ["teacher_name", "coordinator", "senior"], numero: ["teacher_id"] },
+  retention: { filtros: ["country", "sucursal", "category"], texto: ["coach"], numero: ["coach_id"] },
 };
 
 const paraIlike = (t: string) => t.replace(/[%_\\,()."*]/g, " ").trim();

@@ -1,11 +1,11 @@
-import { entero, fecha, fechaDiaMes, invalido, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
-import { cuentaIncidencia, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
+import { entero, fecha, fechaDiaMes, invalido, leerHojaRetencion, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { categoriaRetencion, cuentaIncidencia, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
 
 /** Escalas observadas en los archivos reales: QA y CSAT van de 0 a 10. */
 export const ESCALA_NOTA = { min: 0, max: 10 } as const;
 const fueraDeEscala = (n: number | null) => n !== null && (n < ESCALA_NOTA.min || n > ESCALA_NOTA.max);
 
-export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness";
+export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness" | "retention";
 
 export interface Columna {
   clave: string;
@@ -43,6 +43,8 @@ export interface ConfigPestana {
   /** El rango a reemplazar sale de las fechas del archivo, no de Desde/Hasta. */
   rangoDesdeArchivo?: boolean;
   /** Agrupa las filas ya mapeadas (solo lo usa Lateness). */
+  /** El mes se intenta detectar en el nombre del archivo. */
+  detectarMes?: boolean;
   agrupar?: (registros: Record<string, unknown>[]) => Record<string, unknown>[];
 }
 
@@ -428,6 +430,69 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
         else mapa.set(k, { ...r });
       }
       return [...mapa.values()];
+    },
+  },
+
+  retention: {
+    clave: "retention",
+    titulo: "Retention",
+    campoFecha: "period_month",
+    aceptar: ".xls,.xlsx",
+    applicable: false,
+    reemplazarRango: true,
+    requiereMes: true,
+    detectarMes: true,
+    rangoDesdeArchivo: true,
+    leer: leerHojaRetencion,
+    columnas: [
+      { clave: "period_month", etiqueta: "Mes" },
+      { clave: "country", etiqueta: "Country" },
+      { clave: "sucursal", etiqueta: "Sucursal" },
+      { clave: "coach_id", etiqueta: "Id Coach", alineacion: "derecha" },
+      { clave: "coach", etiqueta: "Coach" },
+      { clave: "do_count", etiqueta: "DO", alineacion: "derecha" },
+      { clave: "active_students", etiqueta: "Active Student", alineacion: "derecha" },
+      { clave: "do_pct", etiqueta: "DO %", alineacion: "derecha" },
+      { clave: "retention_pct", etiqueta: "Retention %", alineacion: "derecha" },
+      { clave: "clv", etiqueta: "CLV", alineacion: "derecha" },
+      { clave: "category", etiqueta: "Category" },
+    ],
+    filtros: [
+      { clave: "country", etiqueta: "Country" },
+      { clave: "sucursal", etiqueta: "Sucursal" },
+      { clave: "category", etiqueta: "Category" },
+    ],
+    busqueda: ["coach_id", "coach"],
+    mapear: (fila, extra) => {
+      const crudo = primera(fila, ["id coach", "coach id", "id_coach"]);
+      if (crudo === null || crudo === "") return {};
+      const id = entero(crudo);
+      if (id === null || id <= 0) return { problema: `Id Coach inválido (${texto(fila["coach"]) ?? "sin nombre"})` };
+      if (!extra.mes) return { problema: "Falta el mes del archivo" };
+      // Porcentajes del libro vienen como fracción (0.8928) y se guardan en 0–100.
+      const pct = (v: unknown) => {
+        const n = numero(v);
+        return n === null ? null : n * 100;
+      };
+      const retencion = pct(fila["retention"]);
+      const categoria = texto(primera(fila, ["category", "categoria"]))?.toUpperCase() ?? categoriaRetencion(retencion);
+      return {
+        registro: {
+          period_month: `${extra.mes}-01`,
+          coach_id: id,
+          coach: texto(fila["coach"]),
+          country: texto(primera(fila, ["country", "pais"])),
+          sucursal: texto(fila["sucursal"]),
+          do_count: numero(fila["do"]),
+          active_students: numero(primera(fila, ["active student", "active students"])),
+          do_pct: pct(fila["do %"]),
+          retention_pct: retencion,
+          fc_do: numero(fila["fc do"]),
+          fc_do_pct: pct(fila["fc do%"]),
+          clv: numero(fila["clv"]),
+          category: categoria,
+        },
+      };
     },
   },
 };

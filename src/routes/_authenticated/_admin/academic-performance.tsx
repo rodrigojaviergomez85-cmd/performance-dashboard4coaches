@@ -26,12 +26,12 @@ export const Route = createFileRoute("/_authenticated/_admin/academic-performanc
   component: AcademicPerformance,
 });
 
-const PESTANAS = ["qa", "dsat", "nl", "do", "abs", "lateness"] as const;
+const PESTANAS = ["qa", "dsat", "nl", "retention", "abs", "lateness"] as const;
 const ETIQUETAS: Record<(typeof PESTANAS)[number], string> = {
   qa: "QA",
   dsat: "DSAT",
   nl: "NL",
-  do: "DO",
+  retention: "Retention",
   abs: "Abs",
   lateness: "Lateness",
 };
@@ -57,13 +57,7 @@ function AcademicPerformance() {
 
         {PESTANAS.map((p) => (
           <TabsContent key={p} value={p}>
-            {p === "do" ? (
-              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-                El contenido de DO se definirá más adelante.
-              </div>
-            ) : (
-              <PestanaAcademica config={CONFIGS[p]} />
-            )}
+            <PestanaAcademica config={CONFIGS[p]} />
           </TabsContent>
         ))}
       </Tabs>
