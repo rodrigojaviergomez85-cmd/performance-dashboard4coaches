@@ -78,6 +78,13 @@
       "when": 1791646617049,
       "tag": "0010_retencion",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791650208734,
+      "tag": "0011_qa_por_fecha_ingresado",
+      "breakpoints": true
     }
   ]
 }

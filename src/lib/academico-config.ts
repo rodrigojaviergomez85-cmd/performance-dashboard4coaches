@@ -111,11 +111,11 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     busqueda: ["coach_id", "coach", "clave", "gerente"],
     mapear: (fila) => {
       const mesArchivo = fila["month"];
-      const f = fechaDiaMes(
-        primera(fila, ["fecha monitoreo", "fecha ingresado"]),
-        mesArchivo,
-      );
-      if (!f) return { problema: "Fecha Monitoreo inválida" };
+      // El período QA se decide por Fecha Ingresado (cuándo se registró el QA), no por la fecha de la clase.
+      const fMon = fechaDiaMes(fila["fecha monitoreo"], mesArchivo);
+      const fIng = fechaDiaMes(fila["fecha ingresado"], mesArchivo) ?? fMon;
+      const f = fMon ?? fIng;
+      if (!fIng || !f) return { problema: "Fecha Ingresado inválida" };
       const crudoCoach = primera(fila, ["id coach", "coach id"]);
       const coachId = entero(crudoCoach);
       if (coachId === null) return { problema: invalido(crudoCoach, coachId) ? "Id Coach inválido" : "Falta Id Coach" };
