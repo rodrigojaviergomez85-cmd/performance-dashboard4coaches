@@ -770,6 +770,60 @@ export type Database = {
         }
         Relationships: []
       }
+      retencion: {
+        Row: {
+          active_students: number | null
+          category: string | null
+          clv: number | null
+          coach: string | null
+          coach_id: number
+          country: string | null
+          creado: string
+          do_count: number | null
+          do_pct: number | null
+          fc_do: number | null
+          fc_do_pct: number | null
+          id: string
+          period_month: string
+          retention_pct: number | null
+          sucursal: string | null
+        }
+        Insert: {
+          active_students?: number | null
+          category?: string | null
+          clv?: number | null
+          coach?: string | null
+          coach_id: number
+          country?: string | null
+          creado?: string
+          do_count?: number | null
+          do_pct?: number | null
+          fc_do?: number | null
+          fc_do_pct?: number | null
+          id?: string
+          period_month: string
+          retention_pct?: number | null
+          sucursal?: string | null
+        }
+        Update: {
+          active_students?: number | null
+          category?: string | null
+          clv?: number | null
+          coach?: string | null
+          coach_id?: number
+          country?: string | null
+          creado?: string
+          do_count?: number | null
+          do_pct?: number | null
+          fc_do?: number | null
+          fc_do_pct?: number | null
+          id?: string
+          period_month?: string
+          retention_pct?: number | null
+          sucursal?: string | null
+        }
+        Relationships: []
+      }
       revisiones: {
         Row: {
           actualizado: string

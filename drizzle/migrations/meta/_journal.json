@@ -71,6 +71,13 @@
       "when": 1791476150022,
       "tag": "0009_qa_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791646617049,
+      "tag": "0010_retencion",
+      "breakpoints": true
     }
   ]
 }
