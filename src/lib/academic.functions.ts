@@ -473,7 +473,7 @@ export const actualizarApplicable = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/* ---------- Períodos QA (solo QA; agrupan por fecha_monitoreo sin tocar datos) ---------- */
+/* ---------- Períodos QA (solo QA; agrupan por fecha_ingresado sin tocar datos) ---------- */
 
 const periodoSchema = z.object({
   id: z.string().uuid().optional(),
