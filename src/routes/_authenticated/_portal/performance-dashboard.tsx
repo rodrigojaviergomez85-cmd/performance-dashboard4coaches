@@ -346,6 +346,23 @@ function PerformanceDashboard() {
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
+            <h2 className="text-sm font-bold text-foreground">Retention — Q{quarter} {year}</h2>
+            <p className="text-[10px] text-muted-foreground">Source: COACH GRAL · quarter uses combined students, not an average</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[...(data.retMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.retTotal ? [{ ...data.retTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
+              <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.retencion === null ? "scorecard-empty" : estadoCategoria(m.categoria))}>
+                <p className="scorecard-label">{m.etiqueta}</p>
+                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.retencion === null ? "—" : `${m.retencion.toFixed(2)}%`}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{m.retencion === null ? "No data" : m.categoria ?? "—"}</p>
+                {m.retencion !== null && (
+                  <p className="mt-3 text-[10px] text-muted-foreground">DO {m.doPct === null ? "—" : `${m.doPct.toFixed(2)}%`} · CLV {m.clv ?? "—"}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Locks</h2>
             <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
           </div>
