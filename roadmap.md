@@ -39,3 +39,4 @@ Decisiones confirmadas:
 - [x] Tabla qa_periods, selector Período QA y configuración en la pestaña QA
 - [ ] Confirmar si el Performance Dashboard también debe agrupar QA por Período QA
 - [x] Incidencias: carga del libro completo, días/semanas únicas por mes y trimestre
+- [x] Retention: carga de COACH GRAL en Academic Performance y bloque Q en Performance Dashboard

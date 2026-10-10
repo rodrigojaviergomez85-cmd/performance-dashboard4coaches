@@ -198,3 +198,39 @@ export function resumenIncidencias(fechas: string[]) {
     semanas: new Set([...dias].map(semanaIso)).size,
   };
 }
+
+/** Retention: <80% BAD, 80% a <90% GREAT, ≥90% SUPERSTAR. Recibe el porcentaje 0–100. */
+export function categoriaRetencion(retencion: number | null): "BAD" | "GREAT" | "SUPERSTAR" | null {
+  if (retencion === null || !Number.isFinite(retencion)) return null;
+  if (retencion >= 90) return "SUPERSTAR";
+  if (retencion >= 80) return "GREAT";
+  return "BAD";
+}
+
+export interface MesRetencion {
+  do_count: number | null;
+  active_students: number | null;
+  fc_do: number | null;
+}
+
+/**
+ * Trimestre con la misma fórmula de COACH GRAL sobre la población combinada
+ * (no promedia porcentajes): DO% = ΣDO / ΣActive, Retention = 1 − DO%,
+ * CLV = REDONDEAR.MAS(1 / (ΣFC DO / ΣActive)). Meses sin datos no cuentan como cero.
+ */
+export function retencionTrimestre(meses: MesRetencion[]) {
+  const con = meses.filter((m) => m.active_students !== null && m.do_count !== null);
+  const activos = con.reduce((a, m) => a + (m.active_students ?? 0), 0);
+  if (!con.length || activos <= 0) return { retencion: null, doPct: null, clv: null, categoria: null };
+  const dos = con.reduce((a, m) => a + (m.do_count ?? 0), 0);
+  const fc = con.reduce((a, m) => a + (m.fc_do ?? m.do_count ?? 0), 0);
+  const doPct = (dos * 100) / activos;
+  const retencion = 100 - doPct;
+  const fcPct = fc / activos;
+  return {
+    retencion,
+    doPct,
+    clv: fcPct > 0 ? Math.ceil(1 / fcPct - 1e-9) : null,
+    categoria: categoriaRetencion(retencion),
+  };
+}

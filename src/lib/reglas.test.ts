@@ -125,3 +125,32 @@ describe("incidencias", () => {
     expect(resumenIncidencias([]).dias).toBeNull();
   });
 });
+
+import { categoriaRetencion, retencionTrimestre } from "./reglas";
+
+describe("retention", () => {
+  it("categorías por umbral", () => {
+    expect(categoriaRetencion(79.99)).toBe("BAD");
+    expect(categoriaRetencion(80)).toBe("GREAT");
+    expect(categoriaRetencion(89.99)).toBe("GREAT");
+    expect(categoriaRetencion(90)).toBe("SUPERSTAR");
+    expect(categoriaRetencion(null)).toBeNull();
+  });
+  it("trimestre sobre población combinada, no promedio de porcentajes", () => {
+    const r = retencionTrimestre([
+      { do_count: 1, active_students: 10, fc_do: 1 },
+      { do_count: 10, active_students: 100, fc_do: 10 },
+      { do_count: null, active_students: null, fc_do: null },
+    ]);
+    expect(r.doPct).toBeCloseTo(10, 6);
+    expect(r.retencion).toBeCloseTo(90, 6);
+    expect(r.clv).toBe(10);
+    expect(r.categoria).toBe("SUPERSTAR");
+  });
+  it("CLV redondea hacia arriba como el libro", () => {
+    expect(retencionTrimestre([{ do_count: 8, active_students: 105.8333, fc_do: 8.8889 }]).clv).toBe(12);
+  });
+  it("sin datos es NO DATA, no 0%", () => {
+    expect(retencionTrimestre([]).retencion).toBeNull();
+  });
+});

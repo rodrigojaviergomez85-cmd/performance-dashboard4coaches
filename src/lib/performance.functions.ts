@@ -16,6 +16,7 @@ import {
   rangoQa,
   redondear2,
   resumenIncidencias,
+  retencionTrimestre,
 } from "@/lib/reglas";
 
 /**
@@ -197,6 +198,24 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         .lt("fecha", finReal),
     );
 
+    const retencion = await todasLasFilas<{
+      period_month: string;
+      do_count: number | null;
+      active_students: number | null;
+      do_pct: number | null;
+      retention_pct: number | null;
+      fc_do: number | null;
+      clv: number | null;
+      category: string | null;
+    }>(() =>
+      supabaseAdmin
+        .from("retencion")
+        .select("id, period_month, do_count, active_students, do_pct, retention_pct, fc_do, clv, category")
+        .eq("coach_id", coachId)
+        .gte("period_month", inicio)
+        .lt("period_month", finReal),
+    );
+
     const mesDe = (f: string | null) => (f ? Number(f.slice(5, 7)) : 0);
     const enRango = (f: string | null) => !!f && f >= inicio && f < finReal;
 
@@ -257,6 +276,28 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     });
     const incTotal = resumenIncidencias(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha));
 
+    // Retention: cada mes muestra los valores de COACH GRAL tal cual; el trimestre se recalcula sobre la población combinada.
+    const retMeses = [0, 1, 2].map((n) => {
+      const mes = inicioMes + n;
+      const r = retencion.find((x) => mesDe(x.period_month) === mes);
+      return {
+        mes,
+        etiqueta: MESES[mes - 1]!,
+        retencion: r?.retention_pct == null ? null : redondear2(Number(r.retention_pct)),
+        doPct: r?.do_pct == null ? null : redondear2(Number(r.do_pct)),
+        clv: r?.clv == null ? null : Number(r.clv),
+        categoria: r?.category ?? null,
+      };
+    });
+    const rt = retencionTrimestre(
+      retencion.map((x) => ({
+        do_count: x.do_count == null ? null : Number(x.do_count),
+        active_students: x.active_students == null ? null : Number(x.active_students),
+        fc_do: x.fc_do == null ? null : Number(x.fc_do),
+      })),
+    );
+    const retTotal = { retencion: redondear2(rt.retencion), doPct: redondear2(rt.doPct), clv: rt.clv, categoria: rt.categoria };
+
     const nlTrimestre = nl.filter((n) => enRango(n.fecha));
     const evaluadas = nlTrimestre.filter((n) => (n.resultado ?? "") !== "Pending").length;
     const aprobadas = nlTrimestre.filter((n) => n.resultado === "Approved").length;
@@ -315,6 +356,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       qaTotal,
       incMeses,
       incTotal,
+      retMeses,
+      retTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),
