@@ -417,14 +417,14 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 
             {vista && (
               <div className="space-y-2">
                 <p className="text-sm text-foreground">
-                  {vista.registros.length} filas listas para guardar.
+                  {vista.registros.length} filas listas para guardar.{vista.rango ? ` Reemplaza del ${vista.rango.desde} al ${vista.rango.hasta}.` : ""}
                 </p>
                 {vista.problemas.length > 0 && (
                   <ul className="max-h-32 overflow-y-auto rounded-md border border-border p-2 text-xs text-muted-foreground">
