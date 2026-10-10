@@ -15,6 +15,7 @@ import {
   promedioQa,
   rangoQa,
   redondear2,
+  resumenIncidencias,
 } from "@/lib/reglas";
 
 /**
@@ -245,6 +246,16 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const qaTotal = resumenQa(notasQaTrimestre);
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
+    // Días y semanas únicas: el total del trimestre se calcula sobre todas sus fechas, no sumando meses.
+    const incMeses = [0, 1, 2].map((n) => {
+      const mes = inicioMes + n;
+      return {
+        mes,
+        etiqueta: MESES[mes - 1]!,
+        ...resumenIncidencias(abs.filter((a) => mesDe(a.fecha) === mes).map((a) => a.fecha)),
+      };
+    });
+    const incTotal = resumenIncidencias(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha));
 
     const nlTrimestre = nl.filter((n) => enRango(n.fecha));
     const evaluadas = nlTrimestre.filter((n) => (n.resultado ?? "") !== "Pending").length;
@@ -302,6 +313,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       },
       qaMeses,
       qaTotal,
+      incMeses,
+      incTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),
