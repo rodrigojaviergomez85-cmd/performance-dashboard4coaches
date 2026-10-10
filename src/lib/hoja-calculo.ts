@@ -226,3 +226,34 @@ export async function leerHojasIncidencias(archivo: File): Promise<Record<string
   }
   return salida;
 }
+
+/** Retention: lee la hoja "COACH GRAL" (o la que tenga sus encabezados). */
+export async function leerHojaRetencion(archivo: File): Promise<Record<string, unknown>[]> {
+  const datos = new Uint8Array(await archivo.arrayBuffer());
+  const nombres = XLSX.read(datos, { type: "array", bookSheets: true }).SheetNames;
+  const nombre = nombres.find((n) => claveEncabezado(n) === "coach gral");
+  if (!nombre) return leerHoja(archivo, ["ID COACH", "Active Student", "RETENTION", "CLV"]);
+  const libro = XLSX.read(datos, { type: "array", sheets: [nombre] });
+  const hoja = libro.Sheets[nombre]!;
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: null }).map((fila) => {
+    const salida: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(fila)) salida[claveEncabezado(k)] = v;
+    return salida;
+  });
+}
+
+const MESES_NOMBRE: [RegExp, number][] = [
+  [/\b(ene|enero|jan|january)\b/, 1], [/\b(feb|febrero|february)\b/, 2], [/\b(mar|marzo|march)\b/, 3],
+  [/\b(abr|abril|apr|april)\b/, 4], [/\b(may|mayo)\b/, 5], [/\b(jun|junio|june)\b/, 6],
+  [/\b(jul|julio|july)\b/, 7], [/\b(ago|agosto|aug|august)\b/, 8], [/\b(sep|sept|septiembre|setiembre|september)\b/, 9],
+  [/\b(oct|octubre|october)\b/, 10], [/\b(nov|noviembre|november)\b/, 11], [/\b(dic|diciembre|dec|december)\b/, 12],
+];
+
+/** Mes "aaaa-mm" detectado en el nombre del archivo; el año sale del nombre o del respaldo. */
+export function mesDesdeNombre(nombre: string, respaldo: string): string | null {
+  const t = claveEncabezado(nombre).replace(/[_\-.]+/g, " ");
+  const hallado = MESES_NOMBRE.find(([re]) => re.test(t));
+  if (!hallado) return null;
+  const anio = t.match(/\b(20\d{2})\b/)?.[1] ?? respaldo.slice(0, 4);
+  return `${anio}-${String(hallado[1]).padStart(2, "0")}`;
+}
