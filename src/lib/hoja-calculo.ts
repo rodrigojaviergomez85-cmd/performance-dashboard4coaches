@@ -179,3 +179,50 @@ export function fechaDiaMes(valor: unknown, mesEsperado?: unknown): string | nul
   }
   return construirFecha(partes.anio, partes.mes, partes.dia);
 }
+
+/**
+ * Lee las hojas RAW de incidencias (ONSITE y ONLINE) del libro completo, ignorando
+ * pivots y resúmenes. Cada fila lleva "__origen". Solo se procesan las filas con Fecha,
+ * porque el libro declara rangos de ~1 millón de filas vacías.
+ */
+export async function leerHojasIncidencias(archivo: File): Promise<Record<string, unknown>[]> {
+  const datos = new Uint8Array(await archivo.arrayBuffer());
+  const nombres = XLSX.read(datos, { type: "array", bookSheets: true }).SheetNames;
+  const raw = nombres.filter((n) => /^raw incide?n?c?i?as/.test(claveEncabezado(n)) || /^raw incid/.test(claveEncabezado(n)));
+  const online = raw.find((n) => claveEncabezado(n).includes("online"));
+  const onsite = raw.find((n) => !claveEncabezado(n).includes("online"));
+  if (!online || !onsite) {
+    throw new Error("No se encontraron las hojas RAW INCIDENCIAS y RAW INCIDENCIAS ONLINE.");
+  }
+  const libro = XLSX.read(datos, { type: "array", cellDates: true, sheets: [onsite, online] });
+  const salida: Record<string, unknown>[] = [];
+  for (const [nombre, origen] of [[onsite, "ONSITE"], [online, "ONLINE"]] as const) {
+    const hoja = libro.Sheets[nombre];
+    if (!hoja) continue;
+    let colFecha = -1;
+    let maxCol = 0;
+    for (const dir of Object.keys(hoja)) {
+      if (dir.startsWith("!")) continue;
+      const c = XLSX.utils.decode_cell(dir);
+      if (c.r === 0) {
+        if (c.c > maxCol) maxCol = c.c;
+        if (claveEncabezado(String(hoja[dir]?.v ?? "")) === "fecha") colFecha = c.c;
+      }
+    }
+    if (colFecha < 0) throw new Error(`La hoja ${nombre} no tiene la columna Fecha.`);
+    let maxFila = 0;
+    for (const dir of Object.keys(hoja)) {
+      if (dir.startsWith("!")) continue;
+      const c = XLSX.utils.decode_cell(dir);
+      const v = hoja[dir]?.v;
+      if (c.c === colFecha && c.r > maxFila && v !== null && v !== undefined && v !== "") maxFila = c.r;
+    }
+    hoja["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxFila, c: maxCol } });
+    for (const fila of XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: null })) {
+      const f: Record<string, unknown> = { __origen: origen };
+      for (const [k, v] of Object.entries(fila)) f[claveEncabezado(k)] = v;
+      salida.push(f);
+    }
+  }
+  return salida;
+}

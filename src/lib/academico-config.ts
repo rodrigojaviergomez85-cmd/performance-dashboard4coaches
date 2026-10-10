@@ -1,4 +1,5 @@
-import { entero, fecha, fechaDiaMes, invalido, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { entero, fecha, fechaDiaMes, invalido, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { cuentaIncidencia, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
 
 /** Escalas observadas en los archivos reales: QA y CSAT van de 0 a 10. */
 export const ESCALA_NOTA = { min: 0, max: 10 } as const;
@@ -37,6 +38,10 @@ export interface ConfigPestana {
   encabezadosRequeridos?: string[];
   /** Convierte una fila del archivo en un registro guardable. */
   mapear: (fila: Record<string, unknown>, extra: Extra) => ResultadoFila;
+  /** Lector propio del archivo (Incidencias lee dos hojas RAW). */
+  leer?: (archivo: File) => Promise<Record<string, unknown>[]>;
+  /** El rango a reemplazar sale de las fechas del archivo, no de Desde/Hasta. */
+  rangoDesdeArchivo?: boolean;
   /** Agrupa las filas ya mapeadas (solo lo usa Lateness). */
   agrupar?: (registros: Record<string, unknown>[]) => Record<string, unknown>[];
 }
@@ -335,12 +340,19 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
       { clave: "tipo", etiqueta: "Tipo" },
     ],
     busqueda: ["coach_id", "coach_asignado", "coach_cubre", "coordinador"],
+    leer: leerHojasIncidencias,
+    rangoDesdeArchivo: true,
     mapear: (fila) => {
+      const origen = (fila["__origen"] ?? "ONSITE") as OrigenIncidencia;
+      const categoria = primera(fila, ["otros motivos", "otros motivos 2"]);
+      // Solo se guardan las filas cuya categoría cuenta como incidencia; el resto se ignora.
+      if (!cuentaIncidencia(origen, categoria) && !cuentaIncidencia(origen, fila["otros motivos 2"])) return {};
       const f = fecha(fila["fecha"]);
-      if (!f) return { problema: "Fecha inválida" };
-      const crudoCoach = primera(fila, ["id coach", "coach id"]);
-      const coachId = entero(crudoCoach);
-      if (coachId === null) return { problema: invalido(crudoCoach, coachId) ? "Id Coach inválido" : "Falta Id Coach" };
+      if (!f) return { problema: "Fecha inválida (se omite)" };
+      const crudoCoach = primera(fila, ["id coach", "coach id", "id"]);
+      const id = entero(crudoCoach);
+      if (id === null || id <= 0) return { problema: `Sin Id Coach válido (${texto(fila["coach asignado"]) ?? "sin nombre"}, se omite)` };
+      const coachId = idCoachBase(id);
       return {
         registro: {
           curso: texto(fila["curso"]),
@@ -363,7 +375,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           whodidit: texto(fila["whodidit"]),
           fecha_ingreso: marca(fila["fecha ingreso"]),
           fecha_modificacion: marca(fila["fecha modificacion"]),
-          tipo: texto(fila["tipo"]),
+          tipo: texto(fila["tipo"]) ?? origen,
           applicable: 1,
         },
       };

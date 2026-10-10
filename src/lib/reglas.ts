@@ -118,3 +118,83 @@ export function alertasPanel(entrada: {
   if (!alertas.length) alertas.push({ tono: "ok", texto: "All clear — great shape." });
   return alertas;
 }
+
+/* ---------------- Incidencias (archivo RAW ONSITE / ONLINE) ---------------- */
+
+export type OrigenIncidencia = "ONSITE" | "ONLINE";
+
+/** Categorías que cuentan como incidencia. Configuración: editar aquí sin tocar el cálculo. */
+export const CATEGORIAS_INCIDENCIA: Record<OrigenIncidencia, string[]> = {
+  ONSITE: [
+    "PERMISO PERSONAL AUTORIZADO",
+    "INCAPACIDAD",
+    "ENFERMA/O, ACCIDIENTADO/A, VA CAMINO AL HOSPITAL",
+    "PROBLEMA O EMERGENCIA PERSONAL",
+    "CLASE IMPARTIDA POR COORDINADOR ACADEMICO",
+    "EMERGENCIA FAMILIAR DE PRIMER GRADO",
+    "CITA MEDICA AUTORIZADA CON ANTICIPACIÓN",
+    "FALLECIMIENTO DE FAMILIAR, PRIMER GRADO",
+    "RENUNCIA INMEDIATA",
+    "DESPIDO INMEDIATO",
+  ],
+  ONLINE: [
+    "PERMISO PERSONAL AUTORIZADO",
+    "ENFERMA/O, ACCIDIENTADO/A, VA CAMINO AL HOSPITAL",
+    "PROBLEMA O EMERGENCIA PERSONAL",
+    "CLASE IMPARTIDA POR COORDINADOR ACADEMICO",
+    "EMERGENCIA FAMILIAR DE PRIMER GRADO",
+    "CITA MEDICA AUTORIZADA CON ANTICIPACIÓN",
+    "RENUNCIA INMEDIATA",
+    "DESPIDO INMEDIATO",
+    "LLEGADA TARDE",
+    "PROBLEMAS TECNICOS",
+    "NO ELECTRICIDAD",
+    "COMPUTER ISSUES",
+    "NO INTERNET",
+  ],
+};
+
+const normalizarCategoria = (t: unknown) =>
+  String(t ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+const CATEGORIAS_NORMALIZADAS: Record<OrigenIncidencia, Set<string>> = {
+  ONSITE: new Set(CATEGORIAS_INCIDENCIA.ONSITE.map(normalizarCategoria)),
+  ONLINE: new Set(CATEGORIAS_INCIDENCIA.ONLINE.map(normalizarCategoria)),
+};
+
+export function cuentaIncidencia(origen: OrigenIncidencia, categoria: unknown): boolean {
+  const c = normalizarCategoria(categoria);
+  return c !== "" && CATEGORIAS_NORMALIZADAS[origen].has(c);
+}
+
+/** El archivo usa el ID base ×10,000 para separar sucursales del mismo coach. */
+export function idCoachBase(id: number): number {
+  return id >= 10000 && id % 10000 === 0 ? id / 10000 : id;
+}
+
+/** Semana ISO (lunes a domingo) de una fecha aaaa-mm-dd, como "2026-W35". */
+export function semanaIso(fecha: string): string {
+  const [a, m, d] = fecha.slice(0, 10).split("-").map(Number);
+  const t = new Date(Date.UTC(a!, m! - 1, d!));
+  const dia = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dia);
+  const inicioAnio = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  const semana = Math.ceil(((t.getTime() - inicioAnio.getTime()) / 86400000 + 1) / 7);
+  return `${t.getUTCFullYear()}-W${String(semana).padStart(2, "0")}`;
+}
+
+/** Días y semanas únicas de un conjunto de fechas. Sin fechas: null (NO DATA). */
+export function resumenIncidencias(fechas: string[]) {
+  if (!fechas.length) return { incidencias: 0, dias: null, semanas: null };
+  const dias = new Set(fechas.map((f) => f.slice(0, 10)));
+  return {
+    incidencias: fechas.length,
+    dias: dias.size,
+    semanas: new Set([...dias].map(semanaIso)).size,
+  };
+}

@@ -332,6 +332,20 @@ function PerformanceDashboard() {
           </div>
 
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
+            <h2 className="text-sm font-bold text-foreground">Incidencias — Q{quarter} {year}</h2>
+            <p className="text-[10px] text-muted-foreground">Unique days and weeks with incidences · limit is 3 days per quarter</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[...(data.incMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.incTotal ? [{ ...data.incTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
+              <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.dias === null ? "scorecard-empty" : m.total && m.dias > 3 ? "scorecard-bad" : "scorecard-great")}>
+                <p className="scorecard-label">{m.etiqueta}</p>
+                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.dias === null ? "—" : `${m.dias} ${m.dias === 1 ? "día" : "días"}`}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{m.semanas === null ? "No data" : `${m.semanas} ${m.semanas === 1 ? "semana" : "semanas"}`}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Locks</h2>
             <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
           </div>

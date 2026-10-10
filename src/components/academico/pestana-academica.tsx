@@ -37,6 +37,7 @@ const POR_PAGINA = 50;
 
 interface Vista {
   registros: Record<string, unknown>[];
+  rango?: { desde: string; hasta: string };
   problemas: string[];
 }
 
@@ -88,14 +89,14 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
   };
 
   const carga = useMutation({
-    mutationFn: (registros: Record<string, unknown>[]) =>
+    mutationFn: (v: Vista) =>
       cargar({
         data: {
           tabla: config.clave,
-          filas: registros,
+          filas: v.registros,
           reemplazarRango: config.reemplazarRango ?? false,
-          desde,
-          hasta,
+          desde: v.rango?.desde ?? desde,
+          hasta: v.rango?.hasta ?? hasta,
         },
       }),
     onSuccess: (r) => {
@@ -141,14 +142,14 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
     if (!archivo) return;
 
     try {
-      const crudas = await leerHoja(archivo, config.encabezadosRequeridos);
+      const crudas = config.leer ? await config.leer(archivo) : await leerHoja(archivo, config.encabezadosRequeridos);
       const registros: Record<string, unknown>[] = [];
       const problemas: string[] = [];
 
       crudas.forEach((fila, i) => {
         const r = config.mapear(fila, { mes, token: token.trim() || null });
         const f = r.registro ? String(r.registro[config.campoFecha] ?? "") : "";
-        if (r.registro && config.reemplazarRango && (f < desde || f > hasta)) {
+        if (r.registro && config.reemplazarRango && !config.rangoDesdeArchivo && (f < desde || f > hasta)) {
           if (problemas.length < 20) problemas.push(`Fila ${i + 2}: fecha ${f} fuera del rango ${desde} a ${hasta}`);
         } else if (r.registro) registros.push(r.registro);
         else if (r.problema && problemas.length < 20)
@@ -160,7 +161,13 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
         toast.error("El archivo no tiene filas válidas", { description: problemas[0] });
         return;
       }
-      setVista({ registros: finales, problemas });
+      // Incidencias: se reemplaza exactamente el rango de fechas que trae el archivo.
+      let rango: Vista["rango"];
+      if (config.rangoDesdeArchivo) {
+        const fechas = finales.map((r) => String(r[config.campoFecha])).sort();
+        rango = { desde: fechas[0]!, hasta: fechas[fechas.length - 1]! };
+      }
+      setVista({ registros: finales, problemas, ...(rango ? { rango } : {}) });
     } catch (e) {
       toast.error("No se pudo leer el archivo", { description: (e as Error).message });
     }
@@ -410,14 +417,14 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 
             {vista && (
               <div className="space-y-2">
                 <p className="text-sm text-foreground">
-                  {vista.registros.length} filas listas para guardar.
+                  {vista.registros.length} filas listas para guardar.{vista.rango ? ` Reemplaza del ${vista.rango.desde} al ${vista.rango.hasta}.` : ""}
                 </p>
                 {vista.problemas.length > 0 && (
                   <ul className="max-h-32 overflow-y-auto rounded-md border border-border p-2 text-xs text-muted-foreground">
@@ -436,7 +443,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
             </Button>
             <Button
               disabled={!vista || carga.isPending || !desde || desde > hasta}
-              onClick={() => vista && carga.mutate(vista.registros)}
+              onClick={() => vista && carga.mutate(vista)}
               title={desde > hasta ? "Rango de fechas inválido" : undefined}
             >
               {carga.isPending ? "Guardando…" : "Confirmar"}
