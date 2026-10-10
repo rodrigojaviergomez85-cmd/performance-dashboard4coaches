@@ -11,7 +11,7 @@ import {
   opcionesAcademico,
 } from "@/lib/academic.functions";
 import type { ConfigPestana } from "@/lib/academico-config";
-import { leerHoja, rangoMesActual } from "@/lib/hoja-calculo";
+import { leerHoja, mesDesdeNombre, rangoMesActual } from "@/lib/hoja-calculo";
 import { MultiFiltro } from "@/components/multi-filtro";
 import { SelectorPeriodoQa } from "@/components/academico/periodos-qa";
 import { Button } from "@/components/ui/button";
@@ -419,7 +419,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.detectarMes ? "Suba el archivo completo tal cual. Se lee la hoja COACH GRAL; el mes se toma del nombre del archivo (o del campo de arriba) y reemplaza solo ese mes." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 
