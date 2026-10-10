@@ -121,8 +121,8 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
       if (coachId === null) return { problema: invalido(crudoCoach, coachId) ? "Id Coach inválido" : "Falta Id Coach" };
       const nota = numero(fila["nota final"]);
       if (invalido(fila["nota final"], nota) || fueraDeEscala(nota)) return { problema: "Nota Final inválida" };
+      // Nota Suc no participa en el promedio de QA: texto como "NOTA SUC" o "N/A" se guarda vacío sin descartar la evaluación.
       const notaSuc = numero(fila["nota suc"]);
-      if (invalido(fila["nota suc"], notaSuc)) return { problema: "Nota Suc inválida" };
       return {
         registro: {
           month: texto(fila["month"]),
