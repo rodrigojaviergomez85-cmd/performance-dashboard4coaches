@@ -155,14 +155,14 @@ export const panelDesempeno = createServerFn({ method: "POST" })
           .lt("period_month", mesInicio(data.year + 1, 1)),
     );
 
-    const qa = await todasLasFilas<{ fecha_monitoreo: string; nota_final: number | null }>(() =>
+    const qa = await todasLasFilas<{ fecha_ingresado: string; nota_final: number | null }>(() =>
       supabaseAdmin
         .from("qa_evaluaciones")
-        .select("fecha_monitoreo, nota_final")
+        .select("fecha_ingresado, nota_final")
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("fecha_monitoreo", qaDesde(data.year))
-        .lt("fecha_monitoreo", qaHasta(data.year)),
+        .gte("fecha_ingresado", qaDesde(data.year))
+        .lt("fecha_ingresado", qaHasta(data.year)),
     );
     const periodosQa = await leerPeriodosQa(supabaseAdmin);
     const qaMes = (f: string) => {
@@ -240,7 +240,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
 
     const notasQaTrimestre = qa
       .filter((q) => {
-        const m = qaMes(q.fecha_monitoreo);
+        const m = qaMes(q.fecha_ingresado);
         return m >= inicioMes && m < inicioMes + 3;
       })
       .map((q) => q.nota_final);
@@ -259,7 +259,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       return {
         mes,
         etiqueta: MESES[mes - 1]!,
-        ...resumenQa(qa.filter((q) => qaMes(q.fecha_monitoreo) === mes).map((q) => q.nota_final)),
+        ...resumenQa(qa.filter((q) => qaMes(q.fecha_ingresado) === mes).map((q) => q.nota_final)),
       };
     });
     const qaTotal = resumenQa(notasQaTrimestre);
@@ -313,7 +313,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const anual = Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1;
       const d = dsatDeMes(mes);
-      const q = promedioQa(qa.filter((x) => qaMes(x.fecha_monitoreo) === mes).map((x) => x.nota_final));
+      const q = promedioQa(qa.filter((x) => qaMes(x.fecha_ingresado) === mes).map((x) => x.nota_final));
       const filasNl = nl.filter((x) => mesDe(x.fecha) === mes);
       const ev = filasNl.filter((x) => (x.resultado ?? "") !== "Pending").length;
       const ap = filasNl.filter((x) => x.resultado === "Approved").length;
@@ -499,18 +499,18 @@ export const detalleQa = createServerFn({ method: "POST" })
       supabaseAdmin
         .from("qa_evaluaciones")
         .select(
-          "id, fecha_monitoreo, clave, quality_type, level, horario, gerente, nota_final, area_mejora, applicable",
+          "id, fecha_ingresado, clave, quality_type, level, horario, gerente, nota_final, area_mejora, applicable",
         )
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("fecha_monitoreo", qaDesde(data.year))
-        .lt("fecha_monitoreo", qaHasta(data.year))
-        .order("fecha_monitoreo", { ascending: false })
+        .gte("fecha_ingresado", qaDesde(data.year))
+        .lt("fecha_ingresado", qaHasta(data.year))
+        .order("fecha_ingresado", { ascending: false })
         .order("id", { ascending: true }),
     ).then(async (todas) => {
       const periodosQa = await leerPeriodosQa(supabaseAdmin);
       return todas.filter((f: any) => {
-        const m = mesQaDeFecha(periodosQa, f.fecha_monitoreo);
+        const m = mesQaDeFecha(periodosQa, f.fecha_ingresado);
         return m.year === data.year && m.month >= inicioMes && m.month < inicioMes + 3;
       });
     });
@@ -522,7 +522,7 @@ export const detalleQa = createServerFn({ method: "POST" })
       resumen: { frase: fraseQa(prom), rango: rangoQa(prom), registros: filas.length },
       filas: filas.map((f) => ({
         id: f.id,
-        fecha: f.fecha_monitoreo,
+        fecha: f.fecha_ingresado,
         clase: f.clave,
         syllabus: f.quality_type,
         level: f.level,

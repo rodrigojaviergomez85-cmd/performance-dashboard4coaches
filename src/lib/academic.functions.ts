@@ -11,8 +11,8 @@ import { z } from "zod";
 const TABLAS = {
   qa: {
     nombre: "qa_evaluaciones",
-    fecha: "fecha_monitoreo",
-    clave: ["clave", "coach_id", "fecha_monitoreo", "type_qa"],
+    fecha: "fecha_ingresado",
+    clave: [] as string[],
     columnas: [
       "month",
       "week",
@@ -188,7 +188,7 @@ const txt = z.string().max(4000).nullable();
 const ESQUEMAS = {
   qa: z.object({
     fecha_monitoreo: fechaIso,
-    fecha_ingresado: fechaIso.nullable(),
+    fecha_ingresado: fechaIso,
     coach_id: z.number().int(),
     nota_final: nota,
     nota_suc: z.number().nullable(),
@@ -382,6 +382,7 @@ export const cargarAcademico = createServerFn({ method: "POST" })
     // Duplicados dentro del mismo archivo.
     const vistas = new Set<string>();
     const unicas = limpias.filter((f) => {
+      if (!cfg.clave.length) return true; // QA: cada fila es una evaluación real (puede haber varias el mismo día).
       const k = claveDe(f, cfg.clave);
       if (vistas.has(k)) return false;
       vistas.add(k);
