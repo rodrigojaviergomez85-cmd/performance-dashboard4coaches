@@ -71,7 +71,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
   qa: {
     clave: "qa",
     titulo: "QA",
-    campoFecha: "fecha_monitoreo",
+    campoFecha: "fecha_ingresado",
     aceptar: ".csv,.xls,.xlsx",
     applicable: true,
     reemplazarRango: true,
@@ -137,7 +137,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           nota_final: nota,
           level: texto(fila["level"]),
           horario: normalizarHorario(fila["horario"]),
-          fecha_ingresado: fechaDiaMes(fila["fecha ingresado"], mesArchivo),
+          fecha_ingresado: fIng,
           type_monitoreo: texto(fila["type monitoreo"]),
           fecha_monitoreo: f,
           evaluating_time: numero(fila["evaluating time"]),
