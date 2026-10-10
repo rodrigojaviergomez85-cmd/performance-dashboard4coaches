@@ -98,3 +98,30 @@ describe("alertas", () => {
     expect(alertasPanel({ ...base, incidencias: 2 })[0]!.tono).toBe("ok");
   });
 });
+
+import { cuentaIncidencia, idCoachBase, resumenIncidencias, semanaIso } from "./reglas";
+
+describe("incidencias", () => {
+  it("filtra categorías por origen, sin importar mayúsculas ni espacios", () => {
+    expect(cuentaIncidencia("ONSITE", "  incapacidad ")).toBe(true);
+    expect(cuentaIncidencia("ONLINE", "INCAPACIDAD")).toBe(false);
+    expect(cuentaIncidencia("ONLINE", "no internet")).toBe(true);
+    expect(cuentaIncidencia("ONSITE", "NO INTERNET")).toBe(false);
+    expect(cuentaIncidencia("ONSITE", "BAJA ASISTENCIA")).toBe(false);
+  });
+  it("ID con cuatro ceros extra vuelve al ID base", () => {
+    expect(idCoachBase(12300000)).toBe(1230);
+    expect(idCoachBase(1419)).toBe(1419);
+  });
+  it("4 incidencias en 11 y 12 de septiembre = 2 días", () => {
+    const r = resumenIncidencias(["2026-09-11", "2026-09-11", "2026-09-12", "2026-09-12"]);
+    expect(r).toEqual({ incidencias: 4, dias: 2, semanas: 1 });
+  });
+  it("una semana entre agosto y septiembre cuenta una vez en el trimestre", () => {
+    expect(semanaIso("2026-08-31")).toBe(semanaIso("2026-09-02"));
+    expect(resumenIncidencias(["2026-08-31", "2026-09-02"]).semanas).toBe(1);
+  });
+  it("sin datos devuelve NO DATA", () => {
+    expect(resumenIncidencias([]).dias).toBeNull();
+  });
+});
