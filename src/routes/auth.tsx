@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { solicitarCodigoCoach, vincularCoach } from "@/lib/auth.functions";
 import { AlternadorTema } from "@/components/alternador-tema";
@@ -46,13 +46,54 @@ function PantallaAcceso() {
 
   const [coachId, setCoachId] = useState("");
   const [email, setEmail] = useState("");
-  const [codigo, setCodigo] = useState("");
   const [codigoEnviado, setCodigoEnviado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [usuario, setUsuario] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [entrandoPorEnlace, setEntrandoPorEnlace] = useState(false);
+
+  // Regreso desde el botón "Log In" del correo: la sesión llega en la URL.
+  useEffect(() => {
+    const url = window.location.href;
+    if (!/access_token=|[?&]code=|token_hash=/.test(url)) return;
+    setEntrandoPorEnlace(true);
+    let hecho = false;
+    const completar = async () => {
+      if (hecho) return;
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      hecho = true;
+      try {
+        const enlace = await enlazarCoach({ data: undefined });
+        if (!enlace.ok) {
+          await supabase.auth.signOut();
+          setError("This account does not match an active coach.");
+          setEntrandoPorEnlace(false);
+          return;
+        }
+        await navigate({ to: "/performance-dashboard", replace: true });
+      } catch {
+        setError("We could not process the request. Please try again.");
+        setEntrandoPorEnlace(false);
+      }
+    };
+    const { data: sub } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === "SIGNED_IN" || evento === "INITIAL_SESSION") void completar();
+    });
+    void completar();
+    const limite = setTimeout(() => {
+      if (!hecho) {
+        setEntrandoPorEnlace(false);
+        setError("The login link is invalid or expired. Please request a new one.");
+      }
+    }, 10000);
+    return () => {
+      sub.subscription.unsubscribe();
+      clearTimeout(limite);
+    };
+  }, [enlazarCoach, navigate]);
 
   async function enviarCodigo(evento: React.FormEvent) {
     evento.preventDefault();
@@ -61,42 +102,20 @@ function PantallaAcceso() {
     setAviso(null);
     try {
       const resultado = await pedirCodigo({
-        data: { coachId: Number(coachId), email: email.trim().toLowerCase() },
+        data: {
+          coachId: Number(coachId),
+          email: email.trim().toLowerCase(),
+          origen: window.location.origin,
+        },
       });
       if (!resultado.ok) {
         setError(resultado.error);
         return;
       }
       setCodigoEnviado(true);
-      setAviso("If the details match an active coach, a code was sent to that email. It expires in a few minutes.");
-    } catch {
-      setError("We could not process the request. Please try again.");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function verificarCodigo(evento: React.FormEvent) {
-    evento.preventDefault();
-    setCargando(true);
-    setError(null);
-    try {
-      const { error: errorCodigo } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
-        token: codigo.trim(),
-        type: "email",
-      });
-      if (errorCodigo) {
-        setError("Invalid or expired code.");
-        return;
-      }
-      const enlace = await enlazarCoach({ data: undefined });
-      if (!enlace.ok) {
-        await supabase.auth.signOut();
-        setError("This account does not match an active coach.");
-        return;
-      }
-      await navigate({ to: "/performance-dashboard", replace: true });
+      setAviso(
+        "If the details match an active coach, we sent a login link to that email. Open it and click the Log In button. Check your spam folder if you don't see it.",
+      );
     } catch {
       setError("We could not process the request. Please try again.");
     } finally {
@@ -152,10 +171,10 @@ function PantallaAcceso() {
               </TabsList>
 
               <TabsContent value="coach">
-                <form
-                  onSubmit={codigoEnviado ? verificarCodigo : enviarCodigo}
-                  className="space-y-4"
-                >
+                <form onSubmit={enviarCodigo} className="space-y-4">
+                  {entrandoPorEnlace ? (
+                    <p className="text-sm text-muted-foreground">Signing you in...</p>
+                  ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="coachId">Coach Id</Label>
                     <Input
@@ -181,42 +200,24 @@ function PantallaAcceso() {
                       placeholder="name@email.com"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="codigo">Code</Label>
-                    <Input
-                      id="codigo"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      required={codigoEnviado}
-                      disabled={!codigoEnviado}
-                      value={codigo}
-                      onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
-                      placeholder="000000"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={cargando}>
-                    {cargando
-                      ? "Verifying..."
-                      : codigoEnviado
-                        ? "Sign in"
-                        : "Send code"}
-                  </Button>
-                  {codigoEnviado ? (
+                  {!codigoEnviado ? (
+                    <Button type="submit" className="w-full" disabled={cargando || entrandoPorEnlace}>
+                      {cargando ? "Sending..." : "Send login link"}
+                    </Button>
+                  ) : (
                     <Button
                       type="button"
                       variant="link"
                       size="sm"
                       className="w-full"
-                      disabled={cargando}
                       onClick={() => {
                         setCodigoEnviado(false);
-                        setCodigo("");
                         setAviso(null);
                       }}
                     >
                       Use a different Coach Id or email
                     </Button>
-                  ) : null}
+                  )}
                   {aviso ? (
                     <p className="text-xs text-muted-foreground">{aviso}</p>
                   ) : null}

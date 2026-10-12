@@ -5,6 +5,13 @@ import { z } from "zod";
 const accesoSchema = z.object({
   coachId: z.number().int().positive(),
   email: z.string().email().max(200),
+  // Origen de la app a donde vuelve el enlace del correo (solo https o localhost).
+  origen: z
+    .string()
+    .url()
+    .max(200)
+    .refine((u) => /^https:\/\/[^/]+$|^http:\/\/localhost(:\d+)?$/.test(u))
+    .optional(),
 });
 
 const LIMITE_POR_HORA = 10;
@@ -62,7 +69,8 @@ export const solicitarCodigoCoach = createServerFn({ method: "POST" })
 
     const url = process.env["SUPABASE_URL"]!;
     const publica = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
-    const envio = await fetch(`${url}/auth/v1/otp`, {
+    const destino = data.origen ? `?redirect_to=${encodeURIComponent(`${data.origen}/auth`)}` : "";
+    const envio = await fetch(`${url}/auth/v1/otp${destino}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: publica },
       body: JSON.stringify({ email, create_user: false }),
