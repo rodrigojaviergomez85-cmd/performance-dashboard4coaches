@@ -171,10 +171,10 @@ function PantallaAcceso() {
               </TabsList>
 
               <TabsContent value="coach">
-                <form
-                  onSubmit={codigoEnviado ? verificarCodigo : enviarCodigo}
-                  className="space-y-4"
-                >
+                <form onSubmit={enviarCodigo} className="space-y-4">
+                  {entrandoPorEnlace ? (
+                    <p className="text-sm text-muted-foreground">Signing you in...</p>
+                  ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="coachId">Coach Id</Label>
                     <Input
@@ -200,42 +200,24 @@ function PantallaAcceso() {
                       placeholder="name@email.com"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="codigo">Code</Label>
-                    <Input
-                      id="codigo"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      required={codigoEnviado}
-                      disabled={!codigoEnviado}
-                      value={codigo}
-                      onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))}
-                      placeholder="000000"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={cargando}>
-                    {cargando
-                      ? "Verifying..."
-                      : codigoEnviado
-                        ? "Sign in"
-                        : "Send code"}
-                  </Button>
-                  {codigoEnviado ? (
+                  {!codigoEnviado ? (
+                    <Button type="submit" className="w-full" disabled={cargando || entrandoPorEnlace}>
+                      {cargando ? "Sending..." : "Send login link"}
+                    </Button>
+                  ) : (
                     <Button
                       type="button"
                       variant="link"
                       size="sm"
                       className="w-full"
-                      disabled={cargando}
                       onClick={() => {
                         setCodigoEnviado(false);
-                        setCodigo("");
                         setAviso(null);
                       }}
                     >
                       Use a different Coach Id or email
                     </Button>
-                  ) : null}
+                  )}
                   {aviso ? (
                     <p className="text-xs text-muted-foreground">{aviso}</p>
                   ) : null}
