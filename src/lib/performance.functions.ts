@@ -257,7 +257,6 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         return m >= inicioMes && m < inicioMes + 3;
       })
       .map((q) => q.nota_final);
-    const qaTrimestre = promedioQa(notasQaTrimestre);
     const resumenQa = (notas: unknown[]) => {
       const p = promedioQa(notas);
       return {
@@ -275,7 +274,15 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         ...resumenQa(qa.filter((q) => qaMes(q.fecha_ingresado) === mes).map((q) => q.nota_final)),
       };
     });
-    const qaTotal = resumenQa(notasQaTrimestre);
+    // Q Total = promedio de los promedios mensuales (solo meses con evaluaciones), no de todas las evaluaciones.
+    const promediosMes = qaMeses.map((m) => promedioQa(qa.filter((q) => qaMes(q.fecha_ingresado) === m.mes).map((q) => q.nota_final))).filter((p): p is number => p !== null);
+    const qaTrimestreProm = promediosMes.length ? promediosMes.reduce((a, p) => a + p, 0) / promediosMes.length : null;
+    const qaTotal = {
+      promedio: redondear2(qaTrimestreProm),
+      frase: fraseQa(qaTrimestreProm),
+      evaluaciones: notasQaTrimestre.filter((n) => notaValida(n) !== null).length,
+      bloqueado: qaTrimestreProm !== null && qaTrimestreProm < QA_BLOQUEO,
+    };
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
     // Días y semanas únicas: el total del trimestre se calcula sobre todas sus fechas, no sumando meses.
@@ -385,16 +392,16 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       hiresMeses,
       hiresTotal,
       qa: {
-        frase: fraseQa(qaTrimestre),
-        rango: rangoQa(qaTrimestre),
-        bloqueado: qaTrimestre !== null && qaTrimestre < QA_BLOQUEO,
-        advertencia: qaTrimestre !== null && qaTrimestre >= QA_BLOQUEO && qaTrimestre < QA_ADVERTENCIA,
+        frase: fraseQa(qaTrimestreProm),
+        rango: rangoQa(qaTrimestreProm),
+        bloqueado: qaTrimestreProm !== null && qaTrimestreProm < QA_BLOQUEO,
+        advertencia: qaTrimestreProm !== null && qaTrimestreProm >= QA_BLOQUEO && qaTrimestreProm < QA_ADVERTENCIA,
       },
       alertas: alertasPanel({
-        hayDatos: denomTrimestre > 0 || qaTrimestre !== null || incidencias > 0 || nlTrimestre.length > 0,
+        hayDatos: denomTrimestre > 0 || qaTrimestreProm !== null || incidencias > 0 || nlTrimestre.length > 0,
         incidencias,
-        qaBloqueado: qaTrimestre !== null && qaTrimestre < QA_BLOQUEO,
-        qaAdvertencia: qaTrimestre !== null && qaTrimestre >= QA_BLOQUEO && qaTrimestre < QA_ADVERTENCIA,
+        qaBloqueado: qaTrimestreProm !== null && qaTrimestreProm < QA_BLOQUEO,
+        qaAdvertencia: qaTrimestreProm !== null && qaTrimestreProm >= QA_BLOQUEO && qaTrimestreProm < QA_ADVERTENCIA,
       }),
       incidencias,
       tardanzas: sumaTardanzas,
