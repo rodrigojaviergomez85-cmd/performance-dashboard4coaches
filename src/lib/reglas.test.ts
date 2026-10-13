@@ -104,7 +104,8 @@ import { cuentaIncidencia, idCoachBase, resumenIncidencias, semanaIso } from "./
 describe("incidencias", () => {
   it("filtra categorías por origen, sin importar mayúsculas ni espacios", () => {
     expect(cuentaIncidencia("ONSITE", "  incapacidad ")).toBe(true);
-    expect(cuentaIncidencia("ONLINE", "INCAPACIDAD")).toBe(false);
+    expect(cuentaIncidencia("ONLINE", "INCAPACIDAD")).toBe(true);
+    expect(cuentaIncidencia("ONLINE", "FALLECIMIENTO DE FAMILIAR, PRIMER GRADO")).toBe(false);
     expect(cuentaIncidencia("ONLINE", "no internet")).toBe(true);
     expect(cuentaIncidencia("ONSITE", "NO INTERNET")).toBe(false);
     expect(cuentaIncidencia("ONSITE", "BAJA ASISTENCIA")).toBe(false);
