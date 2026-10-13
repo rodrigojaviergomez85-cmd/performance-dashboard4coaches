@@ -419,7 +419,7 @@ export function PestanaAcademica({ config }: { config: ConfigPestana }) {
 
             {config.reemplazarRango && (
               <p className="text-xs text-muted-foreground">
-                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.detectarMes ? "Suba el archivo completo tal cual. Se lee la hoja COACH GRAL; el mes se toma del nombre del archivo (o del campo de arriba) y reemplaza solo ese mes." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
+                {esQa ? "La carga reemplaza lo que ya exista dentro del Período QA seleccionado." : config.clave === "hires" ? "Suba el archivo completo tal cual. Se lee la hoja HIRES-RD y las metas de GOALS - RAW DATA; se reemplaza solo el mes reportado del archivo." : config.detectarMes ? "Suba el archivo completo tal cual. Se lee la hoja COACH GRAL; el mes se toma del nombre del archivo (o del campo de arriba) y reemplaza solo ese mes." : config.rangoDesdeArchivo ? "Suba el archivo completo tal cual. Se leen solo las hojas RAW (Onsite y Online), se guardan solo las categorías que cuentan y se reemplaza el rango de fechas del archivo." : "La carga reemplaza lo que ya exista entre las fechas seleccionadas arriba."}
               </p>
             )}
 

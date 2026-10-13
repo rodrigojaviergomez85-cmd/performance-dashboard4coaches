@@ -85,6 +85,13 @@
       "when": 1791650208734,
       "tag": "0011_qa_por_fecha_ingresado",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791921362392,
+      "tag": "0012_migration",
+      "breakpoints": true
     }
   ]
 }

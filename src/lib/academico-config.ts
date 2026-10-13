@@ -1,11 +1,11 @@
-import { entero, fecha, fechaDiaMes, invalido, leerHojaRetencion, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
-import { categoriaRetencion, cuentaIncidencia, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
+import { entero, fecha, fechaDiaMes, invalido, leerHojaRetencion, leerHojasHires, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { categoriaRetencion, cuentaIncidencia, esHire2m, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
 
 /** Escalas observadas en los archivos reales: QA y CSAT van de 0 a 10. */
 export const ESCALA_NOTA = { min: 0, max: 10 } as const;
 const fueraDeEscala = (n: number | null) => n !== null && (n < ESCALA_NOTA.min || n > ESCALA_NOTA.max);
 
-export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness" | "retention";
+export type ClaveTabla = "qa" | "dsat" | "nl" | "abs" | "lateness" | "retention" | "hires";
 
 export interface Columna {
   clave: string;
@@ -433,6 +433,67 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     },
   },
 
+  hires: {
+    clave: "hires",
+    titulo: "Hires",
+    campoFecha: "period_month",
+    aceptar: ".xlsx",
+    applicable: false,
+    reemplazarRango: true,
+    rangoDesdeArchivo: true,
+    leer: leerHojasHires,
+    columnas: [
+      { clave: "period_month", etiqueta: "Mes" },
+      { clave: "tipo", etiqueta: "Tipo" },
+      { clave: "coach_id", etiqueta: "Id Coach", alineacion: "derecha" },
+      { clave: "coach", etiqueta: "Coach" },
+      { clave: "student_id", etiqueta: "Student ID", alineacion: "derecha" },
+      { clave: "student", etiqueta: "Student" },
+      { clave: "categoria", etiqueta: "Tenure" },
+      { clave: "meta", etiqueta: "Meta", alineacion: "derecha" },
+      { clave: "location", etiqueta: "Location" },
+      { clave: "country", etiqueta: "Country" },
+    ],
+    filtros: [
+      { clave: "tipo", etiqueta: "Tipo" },
+      { clave: "categoria", etiqueta: "Tenure" },
+      { clave: "location", etiqueta: "Location" },
+      { clave: "country", etiqueta: "Country" },
+    ],
+    busqueda: ["coach_id", "coach", "student"],
+    mapear: (fila) => {
+      if (fila["__tipo"] === "meta") {
+        const meta = numero(fila["meta"]);
+        if (meta === null) return {};
+        const id = typeof fila["coach_id"] === "number" ? fila["coach_id"] : null;
+        if (id === null) return { problema: `Meta sin Coach ID (${texto(fila["coach"])})` };
+        const mes = texto(fila["__mes"]);
+        if (!mes) return { problema: "No se pudo detectar el mes de las metas" };
+        return {
+          registro: {
+            tipo: "meta", period_month: `${mes}-01`, coach_id: id, coach: texto(fila["coach"]),
+            student_id: null, student: null, categoria: null, es_2m: false, meta,
+            fecha_reportado: null, location: texto(fila["location"]), country: texto(fila["country"]),
+          },
+        };
+      }
+      const crudo = fila["id coach"];
+      const id = entero(crudo);
+      if (id === null || id <= 0) return { problema: `Id Coach inválido (${texto(fila["coach"]) ?? "sin nombre"})` };
+      const student = entero(fila["student id"]);
+      if (student === null) return { problema: "Student ID inválido" };
+      const f = fecha(fila["fecha reportado"]);
+      if (!f) return { problema: "fecha reportado inválida" };
+      const categoria = texto(fila["categorias resultados"]);
+      return {
+        registro: {
+          tipo: "hire", period_month: `${f.slice(0, 7)}-01`, coach_id: id, coach: texto(fila["coach"]),
+          student_id: student, student: texto(fila["name"]), categoria, es_2m: esHire2m(categoria), meta: null,
+          fecha_reportado: marca(fila["fecha reportado"]), location: texto(fila["location"]), country: texto(fila["country"]),
+        },
+      };
+    },
+  },
   retention: {
     clave: "retention",
     titulo: "Retention",

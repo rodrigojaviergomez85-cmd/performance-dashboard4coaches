@@ -17,6 +17,8 @@ import {
   redondear2,
   resumenIncidencias,
   retencionTrimestre,
+  resumenHires,
+  estadoCr2m,
 } from "@/lib/reglas";
 
 /**
@@ -216,6 +218,17 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         .lt("period_month", finReal),
     );
 
+    const hiresFilas = (
+      await todasLasFilas<{ tipo: "hire" | "meta"; period_month: string; student_id: number | null; es_2m: boolean; meta: number | null }>(() =>
+        supabaseAdmin
+          .from("hires")
+          .select("id, tipo, period_month, student_id, es_2m, meta")
+          .eq("coach_id", coachId)
+          .gte("period_month", inicio)
+          .lt("period_month", finReal),
+      )
+    ).map((h) => ({ ...h, student_id: h.student_id == null ? null : Number(h.student_id), meta: h.meta == null ? null : Number(h.meta) }));
+
     const mesDe = (f: string | null) => (f ? Number(f.slice(5, 7)) : 0);
     const enRango = (f: string | null) => !!f && f >= inicio && f < finReal;
 
@@ -298,6 +311,17 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     );
     const retTotal = { retencion: redondear2(rt.retencion), doPct: redondear2(rt.doPct), clv: rt.clv, categoria: rt.categoria };
 
+    // Hires: estudiantes únicos por mes y por trimestre (no se suman meses); la meta del trimestre suma las metas mensuales.
+    const tarjetaHires = (filas: typeof hiresFilas) => {
+      const r = resumenHires(filas);
+      return r && { ...r, cr: redondear2(r.cr), cr2m: redondear2(r.cr2m), estado2m: estadoCr2m(r.cr2m) };
+    };
+    const hiresMeses = [0, 1, 2].map((n) => {
+      const mes = inicioMes + n;
+      return { mes, etiqueta: MESES[mes - 1]!, datos: tarjetaHires(hiresFilas.filter((h) => mesDe(h.period_month) === mes)) };
+    });
+    const hiresTotal = tarjetaHires(hiresFilas);
+
     const nlTrimestre = nl.filter((n) => enRango(n.fecha));
     const evaluadas = nlTrimestre.filter((n) => (n.resultado ?? "") !== "Pending").length;
     const aprobadas = nlTrimestre.filter((n) => n.resultado === "Approved").length;
@@ -358,6 +382,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       incTotal,
       retMeses,
       retTotal,
+      hiresMeses,
+      hiresTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),

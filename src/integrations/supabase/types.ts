@@ -350,6 +350,57 @@ export type Database = {
         }
         Relationships: []
       }
+      hires: {
+        Row: {
+          categoria: string | null
+          coach: string | null
+          coach_id: number
+          country: string | null
+          creado: string
+          es_2m: boolean
+          fecha_reportado: string | null
+          id: string
+          location: string | null
+          meta: number | null
+          period_month: string
+          student: string | null
+          student_id: number | null
+          tipo: string
+        }
+        Insert: {
+          categoria?: string | null
+          coach?: string | null
+          coach_id: number
+          country?: string | null
+          creado?: string
+          es_2m?: boolean
+          fecha_reportado?: string | null
+          id?: string
+          location?: string | null
+          meta?: number | null
+          period_month: string
+          student?: string | null
+          student_id?: number | null
+          tipo: string
+        }
+        Update: {
+          categoria?: string | null
+          coach?: string | null
+          coach_id?: number
+          country?: string | null
+          creado?: string
+          es_2m?: boolean
+          fecha_reportado?: string | null
+          id?: string
+          location?: string | null
+          meta?: number | null
+          period_month?: string
+          student?: string | null
+          student_id?: number | null
+          tipo?: string
+        }
+        Relationships: []
+      }
       incidencias: {
         Row: {
           anio: number | null
