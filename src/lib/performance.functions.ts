@@ -257,7 +257,6 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         return m >= inicioMes && m < inicioMes + 3;
       })
       .map((q) => q.nota_final);
-    const qaTrimestre = promedioQa(notasQaTrimestre);
     const resumenQa = (notas: unknown[]) => {
       const p = promedioQa(notas);
       return {
