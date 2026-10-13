@@ -154,3 +154,39 @@ describe("retention", () => {
     expect(retencionTrimestre([]).retencion).toBeNull();
   });
 });
+
+import { estadoCr2m, esHire2m, resumenHires } from "./reglas";
+
+describe("hires", () => {
+  const h = (student_id: number, es_2m = false, mes = "2026-10-01") => ({ tipo: "hire" as const, period_month: mes, student_id, es_2m, meta: null });
+  const m = (meta: number, mes = "2026-10-01") => ({ tipo: "meta" as const, period_month: mes, student_id: null, es_2m: false, meta });
+
+  it("Marvin octubre: 8 / 13, CR 61.54%, 3 2M+, CR 2M+ 23.08%", () => {
+    const r = resumenHires([h(1, true), h(2, true), h(3, true), h(4), h(5), h(6), h(7), h(8), m(13)])!;
+    expect(r.hires).toBe(8);
+    expect(r.meta).toBe(13);
+    expect(r.cr!.toFixed(2)).toBe("61.54");
+    expect(r.hires2m).toBe(3);
+    expect(r.cr2m!.toFixed(2)).toBe("23.08");
+  });
+  it("estudiante repetido cuenta una vez, también en el trimestre", () => {
+    const r = resumenHires([h(1), h(1), h(1, false, "2026-11-01"), m(5), m(5, "2026-11-01")])!;
+    expect(r.hires).toBe(1);
+    expect(r.meta).toBe(10);
+  });
+  it("sin datos es null, no cero", () => {
+    expect(resumenHires([])).toBeNull();
+  });
+  it("solo 2 MESES O MÁS cuenta como 2M+", () => {
+    expect(esHire2m("2 MESES O MÁS")).toBe(true);
+    expect(esHire2m("0-2 MESES")).toBe(false);
+    expect(esHire2m("NA-DO")).toBe(false);
+    expect(esHire2m("NA-INT HIRED")).toBe(false);
+  });
+  it("semáforo CR % 2M+", () => {
+    expect(estadoCr2m(14.99)).toBe("rojo");
+    expect(estadoCr2m(15)).toBe("amarillo");
+    expect(estadoCr2m(29.99)).toBe("amarillo");
+    expect(estadoCr2m(30)).toBe("verde");
+  });
+});

@@ -234,3 +234,54 @@ export function retencionTrimestre(meses: MesRetencion[]) {
     categoria: categoriaRetencion(retencion),
   };
 }
+
+/** Hires: solo esta categoría de tenure cuenta como 2M+. */
+export const CATEGORIA_HIRES_2M = "2 MESES O MÁS";
+export const esHire2m = (categoria: string | null | undefined) =>
+  String(categoria ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase() === "2 MESES O MAS";
+
+export interface FilaHire {
+  tipo: "hire" | "meta";
+  period_month: string;
+  student_id: number | null;
+  es_2m: boolean;
+  meta: number | null;
+}
+
+export interface ResultadoHires {
+  hires: number;
+  meta: number | null;
+  hires2m: number;
+  cr: number | null;
+  cr2m: number | null;
+}
+
+const pctDe = (n: number, meta: number | null) => (meta && meta > 0 ? (n / meta) * 100 : null);
+
+/**
+ * Hires de un conjunto de filas (un mes o un trimestre): estudiantes únicos,
+ * 2M+ únicos y meta sumada. Sin filas devuelve null (No data, no cero).
+ */
+export function resumenHires(filas: FilaHire[]): ResultadoHires | null {
+  if (!filas.length) return null;
+  const todos = new Set<number>();
+  const dos = new Set<number>();
+  let meta: number | null = null;
+  for (const f of filas) {
+    if (f.tipo === "meta") {
+      if (f.meta !== null && Number.isFinite(f.meta)) meta = (meta ?? 0) + f.meta;
+    } else if (f.student_id !== null) {
+      todos.add(f.student_id);
+      if (f.es_2m) dos.add(f.student_id);
+    }
+  }
+  return { hires: todos.size, meta, hires2m: dos.size, cr: pctDe(todos.size, meta), cr2m: pctDe(dos.size, meta) };
+}
+
+/** Semáforo de CR % 2M+: <15 rojo, 15–<30 amarillo, ≥30 verde. */
+export function estadoCr2m(cr2m: number | null): "rojo" | "amarillo" | "verde" | null {
+  if (cr2m === null || !Number.isFinite(cr2m)) return null;
+  if (cr2m >= 30) return "verde";
+  if (cr2m >= 15) return "amarillo";
+  return "rojo";
+}
