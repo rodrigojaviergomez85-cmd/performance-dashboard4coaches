@@ -382,6 +382,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       incTotal,
       retMeses,
       retTotal,
+      hiresMeses,
+      hiresTotal,
       qa: {
         frase: fraseQa(qaTrimestre),
         rango: rangoQa(qaTrimestre),
