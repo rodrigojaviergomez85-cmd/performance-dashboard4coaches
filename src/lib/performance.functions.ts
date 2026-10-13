@@ -275,7 +275,15 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         ...resumenQa(qa.filter((q) => qaMes(q.fecha_ingresado) === mes).map((q) => q.nota_final)),
       };
     });
-    const qaTotal = resumenQa(notasQaTrimestre);
+    // Q Total = promedio de los promedios mensuales (solo meses con evaluaciones), no de todas las evaluaciones.
+    const promediosMes = qaMeses.map((m) => promedioQa(qa.filter((q) => qaMes(q.fecha_ingresado) === m.mes).map((q) => q.nota_final))).filter((p): p is number => p !== null);
+    const qaTrimestreProm = promediosMes.length ? promediosMes.reduce((a, p) => a + p, 0) / promediosMes.length : null;
+    const qaTotal = {
+      promedio: redondear2(qaTrimestreProm),
+      frase: fraseQa(qaTrimestreProm),
+      evaluaciones: notasQaTrimestre.filter((n) => notaValida(n) !== null).length,
+      bloqueado: qaTrimestreProm !== null && qaTrimestreProm < QA_BLOQUEO,
+    };
 
     const incidencias = new Set(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha)).size;
     // Días y semanas únicas: el total del trimestre se calcula sobre todas sus fechas, no sumando meses.
