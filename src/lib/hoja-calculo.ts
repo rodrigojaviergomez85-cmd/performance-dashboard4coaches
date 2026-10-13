@@ -257,3 +257,75 @@ export function mesDesdeNombre(nombre: string, respaldo: string): string | null 
   const anio = t.match(/\b(20\d{2})\b/)?.[1] ?? respaldo.slice(0, 4);
   return `${anio}-${String(hallado[1]).padStart(2, "0")}`;
 }
+
+const filasNormalizadas = (hoja: XLSX.WorkSheet) =>
+  XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: null }).map((fila) => {
+    const salida: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(fila)) {
+      const clave = claveEncabezado(k);
+      if (!(clave in salida)) salida[clave] = v; // encabezados repetidos: gana la primera columna
+    }
+    return salida;
+  });
+
+/**
+ * Hires: lee HIRES-RD (filas de contrataciones), la meta oficial por coach de
+ * "GOALS - RAW DATA" (columna TOTAL ACTIVES CON TENURE, por nombre) y la distro
+ * para traducir nombres de coach a Coach ID. Devuelve filas "__tipo" hire y meta.
+ */
+export async function leerHojasHires(archivo: File): Promise<Record<string, unknown>[]> {
+  const datos = new Uint8Array(await archivo.arrayBuffer());
+  const nombres = XLSX.read(datos, { type: "array", bookSheets: true }).SheetNames;
+  const rd = nombres.find((n) => claveEncabezado(n) === "hires-rd");
+  if (!rd) throw new Error("No se encontró la hoja HIRES-RD.");
+  const metas = nombres.find((n) => claveEncabezado(n) === "goals - raw data");
+  const distro = nombres.find((n) => claveEncabezado(n).startsWith("distro"));
+  const libro = XLSX.read(datos, {
+    type: "array",
+    cellDates: true,
+    sheets: [rd, metas, distro].filter(Boolean) as string[],
+  });
+
+  const hires = filasNormalizadas(libro.Sheets[rd]!).filter((f) => texto(f["student id"]) !== null);
+
+  // Nombre → Coach ID: primero lo que trae HIRES-RD, luego la distro del mismo libro.
+  const idPorNombre = new Map<string, number>();
+  for (const f of hires) {
+    const id = entero(f["id coach"]);
+    const nombre = texto(f["coach"]);
+    if (id && nombre && !idPorNombre.has(claveEncabezado(nombre))) idPorNombre.set(claveEncabezado(nombre), id);
+  }
+  if (distro) {
+    for (const f of filasNormalizadas(libro.Sheets[distro]!)) {
+      const id = entero(f["id coach"]);
+      const nombre = texto(f["coach"]);
+      if (id && nombre && !idPorNombre.has(claveEncabezado(nombre))) idPorNombre.set(claveEncabezado(nombre), id);
+    }
+  }
+
+  // El mes de las metas es el mes de reporte que domina en HIRES-RD.
+  const conteo = new Map<string, number>();
+  for (const f of hires) {
+    const d = fecha(f["fecha reportado"]);
+    if (d) conteo.set(d.slice(0, 7), (conteo.get(d.slice(0, 7)) ?? 0) + 1);
+  }
+  const mesMetas = [...conteo.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  const salida: Record<string, unknown>[] = hires.map((f) => ({ ...f, __tipo: "hire" }));
+  if (metas) {
+    for (const f of filasNormalizadas(libro.Sheets[metas]!)) {
+      const nombre = texto(f["coach"]);
+      if (!nombre) continue;
+      salida.push({
+        __tipo: "meta",
+        __mes: mesMetas,
+        coach: nombre,
+        coach_id: idPorNombre.get(claveEncabezado(nombre)) ?? null,
+        meta: f["total actives con tenure"],
+        location: f["location"],
+        country: f["pais"],
+      });
+    }
+  }
+  return salida;
+}
