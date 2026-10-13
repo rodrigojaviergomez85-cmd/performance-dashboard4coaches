@@ -136,6 +136,15 @@ const TABLAS = {
     clave: ["teacher_id", "fecha"],
     columnas: ["fecha", "teacher_id", "teacher_name", "coordinator", "senior", "late_count"],
   },
+  hires: {
+    nombre: "hires",
+    fecha: "period_month",
+    clave: ["tipo", "period_month", "coach_id", "student_id"],
+    columnas: [
+      "tipo", "period_month", "coach_id", "coach", "student_id", "student", "categoria", "es_2m",
+      "meta", "fecha_reportado", "location", "country",
+    ],
+  },
   retention: {
     nombre: "retencion",
     fecha: "period_month",
@@ -177,7 +186,7 @@ async function todasLasFilas<T>(construir: () => any): Promise<T[]> {
   return total;
 }
 
-const tablaSchema = z.enum(["qa", "dsat", "nl", "abs", "lateness", "retention"]);
+const tablaSchema = z.enum(["qa", "dsat", "nl", "abs", "lateness", "retention", "hires"]);
 
 const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const nota = z.number().min(0).max(10).nullable();
@@ -225,6 +234,14 @@ const ESQUEMAS = {
     teacher_id: z.number().int(),
     late_count: z.number().int().min(1),
   }).catchall(txt),
+  hires: z.object({
+    tipo: z.enum(["hire", "meta"]),
+    period_month: fechaIso,
+    coach_id: z.number().int(),
+    student_id: z.number().int().nullable(),
+    es_2m: z.boolean(),
+    meta: z.number().nullable(),
+  }).catchall(txt),
   retention: z.object({
     period_month: fechaIso,
     coach_id: z.number().int(),
@@ -255,6 +272,7 @@ const FILTRABLES: Record<ClaveTabla, { filtros: string[]; texto: string[]; numer
   nl: { filtros: ["syllabus", "level", "horario", "resultado"], texto: ["coach"], numero: ["coach_id"] },
   abs: { filtros: ["pais", "sucursal", "curso", "motivo", "tipo"], texto: ["coach_asignado", "coach_cubre", "coordinador"], numero: ["coach_id"] },
   lateness: { filtros: ["coordinator", "senior"], texto: ["teacher_name", "coordinator", "senior"], numero: ["teacher_id"] },
+  hires: { filtros: ["tipo", "categoria", "location", "country"], texto: ["coach", "student"], numero: ["coach_id"] },
   retention: { filtros: ["country", "sucursal", "category"], texto: ["coach"], numero: ["coach_id"] },
 };
 
