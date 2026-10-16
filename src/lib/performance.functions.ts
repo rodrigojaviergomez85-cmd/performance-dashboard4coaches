@@ -228,6 +228,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         .lt("period_month", finReal),
     );
 
+    const filtroH = await filtroHires(supabaseAdmin, coachId);
     const hiresFilas = (
       await todasLasFilas<{ tipo: "hire" | "meta"; period_month: string; student_id: number | null; es_2m: boolean; meta: number | null }>(() =>
         supabaseAdmin
@@ -235,7 +236,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
           .select("id, tipo, period_month, student_id, es_2m, meta")
           .gte("period_month", inicio)
           .lt("period_month", finReal)
-          .or(await filtroHires(supabaseAdmin, coachId)),
+          .or(filtroH),
       )
     ).map((h) => ({ ...h, student_id: h.student_id == null ? null : Number(h.student_id), meta: h.meta == null ? null : Number(h.meta) }));
 
