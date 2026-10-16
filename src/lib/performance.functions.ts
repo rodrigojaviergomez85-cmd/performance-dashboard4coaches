@@ -111,6 +111,16 @@ async function filtroCsat(admin: any, coachId: number) {
     nombre ? q.ilike("coach_aplica", nombre) : q.eq("teacher_id", coachId);
 }
 
+/**
+ * Hires se atribuye por nombre del coach (con fallback al ID): los archivos traen IDs
+ * de distro/sucursal que pueden pertenecer a otro coach del directorio.
+ */
+async function filtroHires(admin: any, coachId: number) {
+  const { data } = await admin.from("coaches").select("nombre").eq("coach_id", coachId).maybeSingle();
+  const nombre = (data?.nombre ?? "").trim().replace(/[%_\\,()"*]/g, "");
+  return nombre ? `coach.ilike.${nombre}` : `coach_id.eq.${coachId}`;
+}
+
 export const panelDesempeno = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => entradaPanel.parse(input))
@@ -223,9 +233,9 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         supabaseAdmin
           .from("hires")
           .select("id, tipo, period_month, student_id, es_2m, meta")
-          .eq("coach_id", coachId)
           .gte("period_month", inicio)
-          .lt("period_month", finReal),
+          .lt("period_month", finReal)
+          .or(await filtroHires(supabaseAdmin, coachId)),
       )
     ).map((h) => ({ ...h, student_id: h.student_id == null ? null : Number(h.student_id), meta: h.meta == null ? null : Number(h.meta) }));
 
