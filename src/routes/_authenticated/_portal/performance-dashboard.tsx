@@ -353,10 +353,10 @@ function PerformanceDashboard() {
             {[...(data.retMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.retTotal ? [{ ...data.retTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
               <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.retencion === null ? "scorecard-empty" : estadoCategoria(m.categoria))}>
                 <p className="scorecard-label">{m.etiqueta}</p>
-                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.retencion === null ? "—" : `${m.retencion.toFixed(2)}%`}</p>
+                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.retencion === null ? "—" : `${m.total ? m.retencion.toFixed(2) : Math.round(m.retencion)}%`}</p>
                 <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{m.retencion === null ? "No data" : m.categoria ?? "—"}</p>
                 {m.retencion !== null && (
-                  <p className="mt-3 text-[10px] text-muted-foreground">DO {m.doPct === null ? "—" : `${m.doPct.toFixed(2)}%`} · CLV {m.clv ?? "—"}</p>
+                  <p className="mt-3 text-[10px] text-muted-foreground">DO {m.doPct === null ? "—" : `${m.total ? m.doPct.toFixed(2) : Math.round(m.doPct)}%`} · CLV {m.clv ?? "—"}</p>
                 )}
               </div>
             ))}
@@ -382,7 +382,7 @@ function PerformanceDashboard() {
                     <p className="text-[10px] text-muted-foreground">CR % <span className="font-semibold tabular-nums text-foreground">{m.datos.cr === null ? "—" : `${m.datos.cr.toFixed(2)}%`}</span></p>
                     <p className="mt-3 text-[10px] font-semibold uppercase text-muted-foreground">HIRES 2M+</p>
                     <p className="text-base font-bold tabular-nums text-foreground">{m.datos.hires2m}</p>
-                    <p className={cn("text-[10px] text-muted-foreground", m.datos.estado2m === "verde" ? "scorecard-superstar" : m.datos.estado2m === "amarillo" ? "scorecard-great" : m.datos.estado2m === "rojo" ? "scorecard-bad" : "scorecard-empty")}>CR % 2M+ <span className="font-semibold tabular-nums text-scorecard-status">{m.datos.cr2m === null ? "—" : `${m.datos.cr2m.toFixed(2)}%`}</span></p>
+                    <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">CR % 2M+ <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums", m.datos.estado2m === "verde" ? "border-superstar bg-superstar/15 text-superstar" : m.datos.estado2m === "amarillo" ? "border-great bg-great/20 text-great-text" : m.datos.estado2m === "rojo" ? "border-bad bg-bad/15 text-bad" : "border-border text-muted-foreground")}>{m.datos.cr2m === null ? "—" : `${m.datos.cr2m.toFixed(2)}%`}</span></p>
                   </>
                 )}
               </div>
