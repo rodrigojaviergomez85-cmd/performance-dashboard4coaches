@@ -215,20 +215,26 @@ function PerformanceDashboard() {
         </div>
       </header>
 
-      <div className="scorecard-coach-banner">
+      <div className="scorecard-coach-banner flex-wrap">
         <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary-foreground/30 bg-primary-foreground/10 text-sm font-bold text-primary-foreground">
           {iniciales(data.coach.nombre)}
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-lg font-bold uppercase text-primary-foreground">{data.coach.nombre}</p>
-          <p className="text-xs text-primary-foreground/80">{data.coach.tenure ?? `Coach ${data.coach.coach_id}`}</p>
+          <p className="text-xs text-primary-foreground/80">Coach {data.coach.coach_id}{data.coach.tenure ? ` · ${data.coach.tenure}` : ""}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-bold text-primary-foreground">Q{quarter} {year}</p>
+          <p className="text-xs text-primary-foreground/80">{mesesTexto}</p>
+        </div>
+        <div className="rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-4 py-2 text-lg font-bold text-primary-foreground">
+          {categoria ?? "NO DATA"}
         </div>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-sm font-bold text-foreground">DSAT — Q{quarter} {year}</h2>
+        <h2 className="text-sm font-bold text-foreground">Performance Summary — Q{quarter} {year}</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">{mesesTexto} · drives your Q{quarter === 4 ? 1 : quarter + 1} CSAT Category</span>
           <Select value={String(year)} onValueChange={(valor) => setYear(Number(valor))}>
             <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{ANIOS.map((anio) => <SelectItem key={anio} value={String(anio)}>{anio}</SelectItem>)}</SelectContent>
@@ -239,17 +245,21 @@ function PerformanceDashboard() {
           </Select>
         </div>
       </div>
-
-      {vistaAnual ? (
+      {vistaAnual && (
         <div className="overflow-x-auto rounded-md border border-border bg-card">
           <Table className="text-xs">
             <TableHeader><TableRow className="bg-muted/60"><TableHead>Month</TableHead><TableHead>DSAT</TableHead><TableHead>Category</TableHead><TableHead>QA</TableHead><TableHead>Incidencias</TableHead><TableHead>Lateness</TableHead><TableHead>NL</TableHead></TableRow></TableHeader>
             <TableBody>{data.anual.map((fila) => <TableRow key={fila.mes}><TableCell>{fila.etiqueta}</TableCell><TableCell>{porcentaje(fila.dsat)}</TableCell><TableCell>{fila.categoria ?? "NO DATA"}</TableCell><TableCell>{fila.qaFrase ?? "—"}</TableCell><TableCell>{fila.incidencias}</TableCell><TableCell>{fila.tardanzas}</TableCell><TableCell>{porcentaje(fila.nl)}</TableCell></TableRow>)}</TableBody>
           </Table>
         </div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,1fr)_minmax(220px,.85fr)]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      )}
+      {!vistaAnual && (
+        <>
+          <ResumenScorecard filas={filasResumen} abierta={abierta} alAbrir={(clave) => setAbierta((a) => (a === clave ? null : clave))} quarter={quarter} />
+
+          {abierta === "dsat" && (
+            <div className="scorecard-detail">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {data.meses.map((item) => <TarjetaMes key={item.mes} mes={item} />)}
             <div className={cn("scorecard-month-card border-scorecard-brand bg-scorecard-total", estadoCategoria(categoria))}>
               <p className="scorecard-label">Q{quarter} Total</p>
@@ -259,30 +269,6 @@ function PerformanceDashboard() {
             </div>
           </div>
 
-          <div className={cn("scorecard-category-card", estadoCategoria(categoria))}>
-            <div className="scorecard-award"><Award className="h-5 w-5" /></div>
-            <div>
-              <p className="scorecard-label">Q{quarter} {year} → Q{quarter === 4 ? 1 : quarter + 1} {categoria === "SUPERSTAR" && <span className="scorecard-rank">★ TOP PERFORMER</span>}</p>
-              <p className="mt-2 text-2xl font-bold text-foreground">{categoria ?? "NO DATA"}</p>
-            </div>
-          </div>
-
-          <div className="scorecard-alert-card">
-            <p className="scorecard-label">Alerts</p>
-            <div className="mt-2 space-y-1">
-              {alertas.map((alerta) => (
-                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {alerta.texto}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!vistaAnual && (
-        <>
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">CSAT Comments</h2>
             <p className="text-[10px] text-muted-foreground">What parents & students are saying — every DSAT survey this quarter</p>
@@ -316,6 +302,10 @@ function PerformanceDashboard() {
             <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward DSAT — the reason is shown.</p>
           </div>
 
+            </div>
+          )}
+          {abierta === "qa" && (
+            <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">QA Results</h2>
             <p className="text-[10px] text-muted-foreground">Average QA score by QA period · minimum average 7.5</p>
@@ -331,6 +321,14 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          {(
+            <div className="mt-3 overflow-x-auto rounded-md border border-border bg-card">
+              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
+            </div>
+          )}
+            </div>
+          )}
+          {abierta === "inc" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Incidencias — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Unique days and weeks with incidences · limit is 3 days per quarter</p>
@@ -345,6 +343,8 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+          {abierta === "ret" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Retention — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Source: COACH GRAL · quarter uses combined students, not an average</p>
@@ -362,6 +362,8 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+          {abierta === "hires" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Hires — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Source: HIRES-RD · unique students · 2M+ minimum is 30%</p>
@@ -389,6 +391,19 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+
+          <div className="scorecard-alert-card">
+            <p className="scorecard-label">Alerts</p>
+            <div className="mt-2 space-y-1">
+              {alertas.map((alerta) => (
+                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {alerta.texto}
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Locks</h2>
             <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
@@ -400,11 +415,6 @@ function PerformanceDashboard() {
             <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota={data.nl === null ? "No NL evaluations this quarter" : "≥70% booster pending confirmation"} {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 
-          {mostrarQa && (
-            <div className="overflow-x-auto rounded-md border border-border bg-card">
-              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
-            </div>
-          )}
         </>
       )}
     </section>
