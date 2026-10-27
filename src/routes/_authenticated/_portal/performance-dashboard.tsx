@@ -71,9 +71,6 @@ function TarjetaMes({ mes }: { mes: any }) {
       <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">
         {mes.categoria ?? "No data"}
       </p>
-      <p className="mt-3 text-[10px] text-muted-foreground">
-        {mes.denominador ? `${mes.numerador} / ${mes.denominador} = ${porcentaje(mes.porcentaje)}` : "0 / 0"}
-      </p>
     </div>
   );
 }
@@ -113,8 +110,8 @@ function TarjetaLock({
   );
 }
 
-type Celda = { valor: string; sub: string };
-type FilaResumen = { clave: string; titulo: string; subtitulo: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" | undefined };
+type Celda = { valor: string; sub?: string };
+type FilaResumen = { clave: string; titulo: string; subtitulo?: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" | undefined };
 
 function tonoEstado(estado: string | null, tono?: string) {
   if (!estado) return "gris";
@@ -147,17 +144,17 @@ function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaRes
               <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50", activa && "bg-scorecard-total/60")}>
                 <td className="px-4 py-2.5">
                   <p className="font-semibold text-foreground">{f.titulo}</p>
-                  <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>
+                  {f.subtitulo && <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>}
                 </td>
                 {f.meses.map((m) => (
                   <td key={m.etiqueta} className="px-3 py-2.5 text-center">
                     <p className="font-bold tabular-nums text-foreground">{m.valor}</p>
-                    <p className="text-[10px] text-muted-foreground">{m.sub}</p>
+                    {m.sub && <p className="text-[10px] text-muted-foreground">{m.sub}</p>}
                   </td>
                 ))}
                 <td className="bg-scorecard-total px-3 py-2.5 text-center">
                   <p className="font-bold tabular-nums text-foreground">{f.total.valor}</p>
-                  <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>
+                  {f.total.sub && <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>}
                 </td>
                 <td className="px-3 py-2.5 text-center">
                   <span className={cn("inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase", t === "verde" ? "border-superstar bg-superstar/15 text-superstar" : t === "amarillo" ? "border-great bg-great/20 text-great-text" : t === "rojo" ? "border-bad bg-bad/15 text-bad" : "border-border bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
@@ -254,9 +251,9 @@ function PerformanceDashboard() {
       estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
     },
     {
-      clave: "dsat", titulo: "DSAT", subtitulo: "Parent & student feedback",
-      meses: data.meses.map((m: any) => ({ etiqueta: m.etiqueta, valor: porcentaje(m.porcentaje), sub: m.denominador ? `${m.numerador} / ${m.denominador}` : "No data" })),
-      total: { valor: porcentaje(data.trimestre.porcentaje), sub: `${data.trimestre.numerador} / ${data.trimestre.denominador}` },
+      clave: "dsat", titulo: "DSAT",
+      meses: data.meses.map((m: any) => ({ etiqueta: m.etiqueta, valor: porcentaje(m.porcentaje) })),
+      total: { valor: porcentaje(data.trimestre.porcentaje) },
       estado: categoria ?? null,
     },
     {
@@ -267,7 +264,7 @@ function PerformanceDashboard() {
       tono: data.qaTotal?.promedio == null ? undefined : data.qaTotal.bloqueado ? "rojo" : (data.qa as any)?.advertencia ? "amarillo" : "verde",
     },
     {
-      clave: "inc", titulo: "Incidencias", subtitulo: "Unique days & weeks",
+      clave: "inc", titulo: "Incidencias",
       meses: (data.incMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: dias(m.dias), sub: sem(m.semanas) })),
       total: incTot ? { valor: dias(incTot.dias), sub: sem(incTot.semanas) } : { valor: "—", sub: "No data" },
       estado: !incTot || incTot.dias === null ? null : incTot.dias > 3 ? "OFF TARGET" : "ON TARGET",
@@ -363,7 +360,6 @@ function PerformanceDashboard() {
               <p className="scorecard-label">Q{quarter} Total</p>
               <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{porcentaje(data.trimestre.porcentaje)}</p>
               <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{categoria ?? "No data"}</p>
-              <p className="mt-3 text-[10px] text-muted-foreground">{data.trimestre.numerador} / {data.trimestre.denominador} = {porcentaje(data.trimestre.porcentaje)}</p>
             </div>
           </div>
 
