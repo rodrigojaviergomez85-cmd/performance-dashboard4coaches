@@ -69,6 +69,7 @@
   --color-scorecard-brand: var(--scorecard-brand);
   --color-scorecard-total: var(--scorecard-total);
   --color-scorecard-orange: var(--scorecard-orange);
+  --color-banner-foreground: oklch(0.985 0.005 250);
   --color-status-ok: var(--status-ok);
   --color-status-ok-foreground: var(--status-ok-foreground);
   --color-scorecard-status: var(--scorecard-status);

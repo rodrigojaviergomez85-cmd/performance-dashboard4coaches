@@ -311,18 +311,18 @@ function PerformanceDashboard() {
       </header>
 
       <div className="scorecard-coach-banner flex-wrap">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary-foreground/30 bg-primary-foreground/10 text-sm font-bold text-primary-foreground">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-banner-foreground/30 bg-banner-foreground/10 text-sm font-bold text-banner-foreground">
           {iniciales(data.coach.nombre)}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold uppercase text-primary-foreground">{data.coach.nombre}</p>
-          <p className="text-xs text-primary-foreground/80">Coach {data.coach.coach_id}{data.coach.tenure ? ` · ${data.coach.tenure}` : ""}</p>
+          <p className="text-lg font-bold uppercase text-banner-foreground">{data.coach.nombre}</p>
+          <p className="text-xs text-banner-foreground/80">Coach {data.coach.coach_id}{data.coach.tenure ? ` · ${data.coach.tenure}` : ""}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold text-primary-foreground">Q{quarter} {year}</p>
-          <p className="text-xs text-primary-foreground/80">{mesesTexto}</p>
+          <p className="text-sm font-bold text-banner-foreground">Q{quarter} {year}</p>
+          <p className="text-xs text-banner-foreground/80">{mesesTexto}</p>
         </div>
-        <div className="rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-4 py-2 text-lg font-bold text-primary-foreground">
+        <div className={cn("rounded-full px-4 py-1.5 text-base font-bold", categoria === "BAD" ? "bg-bad/15 text-bad" : categoria ? "bg-status-ok text-status-ok-foreground" : "bg-muted text-muted-foreground")}>
           {categoria ?? "NO DATA"}
         </div>
       </div>
