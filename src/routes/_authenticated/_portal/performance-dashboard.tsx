@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Award, Info, Moon, Sparkles, Sun } from "lucide-react";
+import { ChevronDown, Info, Moon, Sparkles, Sun } from "lucide-react";
 import {
   comentariosCsat,
   detalleQa,
@@ -113,6 +113,65 @@ function TarjetaLock({
   );
 }
 
+type Celda = { valor: string; sub: string };
+type FilaResumen = { clave: string; titulo: string; subtitulo: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" | undefined };
+
+function tonoEstado(estado: string | null, tono?: string) {
+  if (!estado) return "gris";
+  if (tono) return tono;
+  const e = estado.toUpperCase();
+  if (e.includes("ALMOST") || e.includes("NEAR")) return "amarillo";
+  if (e.includes("BAD") || e.includes("OFF") || e.includes("BELOW")) return "rojo";
+  return "verde";
+}
+
+function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaResumen[]; abierta: string | null; alAbrir: (clave: string) => void; quarter: number }) {
+  const etiquetas = filas.find((f) => f.meses.length)?.meses.map((m) => m.etiqueta) ?? [];
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+      <table className="w-full min-w-[720px] text-sm">
+        <thead>
+          <tr className="border-b border-border text-[10px] font-semibold uppercase text-muted-foreground">
+            <th className="px-4 py-2.5 text-left">Metric</th>
+            {etiquetas.map((e) => <th key={e} className="px-3 py-2.5 text-center">{e}</th>)}
+            <th className="bg-scorecard-total px-3 py-2.5 text-center text-scorecard-brand">Q{quarter} Total</th>
+            <th className="px-3 py-2.5 text-center">Status</th>
+            <th className="w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => {
+            const activa = abierta === f.clave;
+            const t = tonoEstado(f.estado, f.tono);
+            return (
+              <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50", activa && "bg-scorecard-total/60")}>
+                <td className="px-4 py-2.5">
+                  <p className="font-semibold text-foreground">{f.titulo}</p>
+                  <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>
+                </td>
+                {f.meses.map((m) => (
+                  <td key={m.etiqueta} className="px-3 py-2.5 text-center">
+                    <p className="font-bold tabular-nums text-foreground">{m.valor}</p>
+                    <p className="text-[10px] text-muted-foreground">{m.sub}</p>
+                  </td>
+                ))}
+                <td className="bg-scorecard-total px-3 py-2.5 text-center">
+                  <p className="font-bold tabular-nums text-foreground">{f.total.valor}</p>
+                  <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <span className={cn("inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase", t === "verde" ? "border-superstar bg-superstar/15 text-superstar" : t === "amarillo" ? "border-great bg-great/20 text-great-text" : t === "rojo" ? "border-bad bg-bad/15 text-bad" : "border-border bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
+                </td>
+                <td className="pr-3 text-muted-foreground"><ChevronDown className={cn("h-4 w-4 transition-transform", activa && "rotate-180")} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PerformanceDashboard() {
   const panel = useServerFn(panelDesempeno);
   const directorio = useServerFn(directorioCoaches);
@@ -125,7 +184,7 @@ function PerformanceDashboard() {
   const [syllabus, setSyllabus] = useState<string | null>(null);
   const [clase, setClase] = useState<string | null>(null);
   const [vistaAnual, setVistaAnual] = useState(false);
-  const [mostrarQa, setMostrarQa] = useState(false);
+  const [abierta, setAbierta] = useState<string | null>(null);
 
   const [paginaCsat, setPaginaCsat] = useState(0);
   const POR_PAGINA_CSAT = 25;
@@ -136,7 +195,7 @@ function PerformanceDashboard() {
     setSyllabus(null);
     setClase(null);
     setPaginaCsat(0);
-    setMostrarQa(false);
+    setAbierta(null);
   }, [coachId, year, quarter]);
 
   const argumentos = { coachId, year, quarter };
@@ -155,7 +214,7 @@ function PerformanceDashboard() {
   const qaConsulta = useQuery({
     queryKey: ["qa-detalle", coachId, year, quarter],
     queryFn: () => qaDetalle({ data: argumentos }),
-    enabled: mostrarQa,
+    enabled: abierta === "qa",
   });
   const qa = qaConsulta.data;
   const hayFiltrosCsat = mes !== null || syllabus !== null || clase !== null;
@@ -181,6 +240,45 @@ function PerformanceDashboard() {
   const diferencia = data.tardanzas - data.tardanzasPrevias;
   const categoria = data.trimestre.categoria;
   const alertas = data.alertas;
+  const fmt2 = (v: number | null | undefined) => (v === null || v === undefined ? "—" : v.toFixed(2));
+  const dias = (d: number | null) => (d === null ? "—" : `${d} ${d === 1 ? "día" : "días"}`);
+  const sem = (w: number | null) => (w === null ? "No data" : `${w} ${w === 1 ? "semana" : "semanas"}`);
+  const hiresCelda = (h: any): Celda => h ? { valor: `${h.hires} / ${h.meta ?? "—"}`, sub: `2M+ ${h.cr2m === null ? "—" : `${h.cr2m.toFixed(2)}%`}` } : { valor: "—", sub: "No data" };
+  const incTot = data.incTotal;
+  const hTot = data.hiresTotal;
+  const filasResumen: FilaResumen[] = [
+    {
+      clave: "ret", titulo: "Retention", subtitulo: "CLV + DO",
+      meses: (data.retMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: m.retencion === null ? "—" : `${Math.round(m.retencion)}%`, sub: m.retencion === null ? "No data" : `DO ${m.doPct === null ? "—" : `${Math.round(m.doPct)}%`} · CLV ${m.clv ?? "—"}` })),
+      total: data.retTotal && data.retTotal.retencion !== null ? { valor: `${data.retTotal.retencion.toFixed(2)}%`, sub: `DO ${data.retTotal.doPct === null ? "—" : `${data.retTotal.doPct.toFixed(2)}%`} · CLV ${data.retTotal.clv ?? "—"}` } : { valor: "—", sub: "No data" },
+      estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
+    },
+    {
+      clave: "dsat", titulo: "DSAT", subtitulo: "Parent & student feedback",
+      meses: data.meses.map((m: any) => ({ etiqueta: m.etiqueta, valor: porcentaje(m.porcentaje), sub: m.denominador ? `${m.numerador} / ${m.denominador}` : "No data" })),
+      total: { valor: porcentaje(data.trimestre.porcentaje), sub: `${data.trimestre.numerador} / ${data.trimestre.denominador}` },
+      estado: categoria ?? null,
+    },
+    {
+      clave: "qa", titulo: "QA", subtitulo: "Average coach score",
+      meses: (data.qaMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: fmt2(m.promedio), sub: m.promedio === null ? "No data" : `${m.evaluaciones} ${m.evaluaciones === 1 ? "evaluation" : "evaluations"}` })),
+      total: data.qaTotal && data.qaTotal.promedio !== null ? { valor: fmt2(data.qaTotal.promedio), sub: `${data.qaTotal.evaluaciones} evaluations` } : { valor: "—", sub: "No data" },
+      estado: data.qaTotal?.frase ?? null,
+      tono: data.qaTotal?.promedio == null ? undefined : data.qaTotal.bloqueado ? "rojo" : (data.qa as any)?.advertencia ? "amarillo" : "verde",
+    },
+    {
+      clave: "inc", titulo: "Incidencias", subtitulo: "Unique days & weeks",
+      meses: (data.incMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: dias(m.dias), sub: sem(m.semanas) })),
+      total: incTot ? { valor: dias(incTot.dias), sub: sem(incTot.semanas) } : { valor: "—", sub: "No data" },
+      estado: !incTot || incTot.dias === null ? null : incTot.dias > 3 ? "OFF TARGET" : "ON TARGET",
+    },
+    {
+      clave: "hires", titulo: "Hires", subtitulo: "Meta + 2M+",
+      meses: (data.hiresMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, ...hiresCelda(m.datos) })),
+      total: hiresCelda(hTot),
+      estado: !hTot || !hTot.estado2m ? null : hTot.estado2m === "verde" ? "ON TARGET" : hTot.estado2m === "amarillo" ? "ALMOST THERE" : "OFF TARGET",
+    },
+  ];
 
   return (
     <section className="scorecard-page">
@@ -215,20 +313,26 @@ function PerformanceDashboard() {
         </div>
       </header>
 
-      <div className="scorecard-coach-banner">
+      <div className="scorecard-coach-banner flex-wrap">
         <div className="flex h-11 w-11 items-center justify-center rounded-full border border-primary-foreground/30 bg-primary-foreground/10 text-sm font-bold text-primary-foreground">
           {iniciales(data.coach.nombre)}
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-lg font-bold uppercase text-primary-foreground">{data.coach.nombre}</p>
-          <p className="text-xs text-primary-foreground/80">{data.coach.tenure ?? `Coach ${data.coach.coach_id}`}</p>
+          <p className="text-xs text-primary-foreground/80">Coach {data.coach.coach_id}{data.coach.tenure ? ` · ${data.coach.tenure}` : ""}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-bold text-primary-foreground">Q{quarter} {year}</p>
+          <p className="text-xs text-primary-foreground/80">{mesesTexto}</p>
+        </div>
+        <div className="rounded-md border border-primary-foreground/30 bg-primary-foreground/10 px-4 py-2 text-lg font-bold text-primary-foreground">
+          {categoria ?? "NO DATA"}
         </div>
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="text-sm font-bold text-foreground">DSAT — Q{quarter} {year}</h2>
+        <h2 className="text-sm font-bold text-foreground">Performance Summary — Q{quarter} {year}</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">{mesesTexto} · drives your Q{quarter === 4 ? 1 : quarter + 1} CSAT Category</span>
           <Select value={String(year)} onValueChange={(valor) => setYear(Number(valor))}>
             <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{ANIOS.map((anio) => <SelectItem key={anio} value={String(anio)}>{anio}</SelectItem>)}</SelectContent>
@@ -239,17 +343,21 @@ function PerformanceDashboard() {
           </Select>
         </div>
       </div>
-
-      {vistaAnual ? (
+      {vistaAnual && (
         <div className="overflow-x-auto rounded-md border border-border bg-card">
           <Table className="text-xs">
             <TableHeader><TableRow className="bg-muted/60"><TableHead>Month</TableHead><TableHead>DSAT</TableHead><TableHead>Category</TableHead><TableHead>QA</TableHead><TableHead>Incidencias</TableHead><TableHead>Lateness</TableHead><TableHead>NL</TableHead></TableRow></TableHeader>
             <TableBody>{data.anual.map((fila) => <TableRow key={fila.mes}><TableCell>{fila.etiqueta}</TableCell><TableCell>{porcentaje(fila.dsat)}</TableCell><TableCell>{fila.categoria ?? "NO DATA"}</TableCell><TableCell>{fila.qaFrase ?? "—"}</TableCell><TableCell>{fila.incidencias}</TableCell><TableCell>{fila.tardanzas}</TableCell><TableCell>{porcentaje(fila.nl)}</TableCell></TableRow>)}</TableBody>
           </Table>
         </div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,1fr)_minmax(220px,.85fr)]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      )}
+      {!vistaAnual && (
+        <>
+          <ResumenScorecard filas={filasResumen} abierta={abierta} alAbrir={(clave) => setAbierta((a) => (a === clave ? null : clave))} quarter={quarter} />
+
+          {abierta === "dsat" && (
+            <div className="scorecard-detail">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {data.meses.map((item) => <TarjetaMes key={item.mes} mes={item} />)}
             <div className={cn("scorecard-month-card border-scorecard-brand bg-scorecard-total", estadoCategoria(categoria))}>
               <p className="scorecard-label">Q{quarter} Total</p>
@@ -259,30 +367,6 @@ function PerformanceDashboard() {
             </div>
           </div>
 
-          <div className={cn("scorecard-category-card", estadoCategoria(categoria))}>
-            <div className="scorecard-award"><Award className="h-5 w-5" /></div>
-            <div>
-              <p className="scorecard-label">Q{quarter} {year} → Q{quarter === 4 ? 1 : quarter + 1} {categoria === "SUPERSTAR" && <span className="scorecard-rank">★ TOP PERFORMER</span>}</p>
-              <p className="mt-2 text-2xl font-bold text-foreground">{categoria ?? "NO DATA"}</p>
-            </div>
-          </div>
-
-          <div className="scorecard-alert-card">
-            <p className="scorecard-label">Alerts</p>
-            <div className="mt-2 space-y-1">
-              {alertas.map((alerta) => (
-                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {alerta.texto}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!vistaAnual && (
-        <>
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">CSAT Comments</h2>
             <p className="text-[10px] text-muted-foreground">What parents & students are saying — every DSAT survey this quarter</p>
@@ -316,6 +400,10 @@ function PerformanceDashboard() {
             <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward DSAT — the reason is shown.</p>
           </div>
 
+            </div>
+          )}
+          {abierta === "qa" && (
+            <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">QA Results</h2>
             <p className="text-[10px] text-muted-foreground">Average QA score by QA period · minimum average 7.5</p>
@@ -331,6 +419,14 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          {(
+            <div className="mt-3 overflow-x-auto rounded-md border border-border bg-card">
+              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
+            </div>
+          )}
+            </div>
+          )}
+          {abierta === "inc" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Incidencias — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Unique days and weeks with incidences · limit is 3 days per quarter</p>
@@ -345,6 +441,8 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+          {abierta === "ret" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Retention — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Source: COACH GRAL · quarter uses combined students, not an average</p>
@@ -362,6 +460,8 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+          {abierta === "hires" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Hires — Q{quarter} {year}</h2>
             <p className="text-[10px] text-muted-foreground">Source: HIRES-RD · unique students · 2M+ minimum is 30%</p>
@@ -389,22 +489,30 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+          </div>}
+
+          <div className="scorecard-alert-card">
+            <p className="scorecard-label">Alerts</p>
+            <div className="mt-2 space-y-1">
+              {alertas.map((alerta) => (
+                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {alerta.texto}
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Locks</h2>
             <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setMostrarQa((actual) => !actual)} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
+            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setAbierta("qa")} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
             <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Limit is 3 days" {...(data.incidencias >= 3 ? { tono: "warning" as const } : {})} />
             <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
             <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota={data.nl === null ? "No NL evaluations this quarter" : "≥70% booster pending confirmation"} {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 
-          {mostrarQa && (
-            <div className="overflow-x-auto rounded-md border border-border bg-card">
-              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Syllabus</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.fecha}</TableCell><TableCell>{fila.clase ?? "—"}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
-            </div>
-          )}
         </>
       )}
     </section>
