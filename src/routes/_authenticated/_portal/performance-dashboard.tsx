@@ -114,7 +114,7 @@ function TarjetaLock({
 }
 
 type Celda = { valor: string; sub: string };
-type FilaResumen = { clave: string; titulo: string; subtitulo: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" };
+type FilaResumen = { clave: string; titulo: string; subtitulo: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" | undefined };
 
 function tonoEstado(estado: string | null, tono?: string) {
   if (!estado) return "gris";
