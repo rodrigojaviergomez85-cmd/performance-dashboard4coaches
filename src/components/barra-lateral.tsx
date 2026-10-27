@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AlternadorTema } from "@/components/alternador-tema";
 import { Button } from "@/components/ui/button";
+import logoE4cc from "@/assets/logo-e4cc.png";
 
 const ENLACES = [
   { to: "/homepage", etiqueta: "Homepage", soloAdmin: true },
@@ -27,10 +28,17 @@ export function BarraLateral({ nombre, rol }: { nombre: string; rol: string }) {
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
       <div className="border-b border-border px-5 py-4">
-        <p className="text-sm font-semibold tracking-tight text-foreground">
-          Portal de Coaches E4CC
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">{nombre}</p>
+        <div className="flex items-center gap-3">
+          <img
+            src={logoE4cc}
+            alt="E4CC"
+            className="h-9 w-9 shrink-0 object-contain"
+          />
+          <p className="text-sm font-semibold tracking-tight text-foreground">
+            Portal de Coaches E4CC
+          </p>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">{nombre}</p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">

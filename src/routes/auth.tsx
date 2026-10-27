@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import logoE4cc from "@/assets/logo-e4cc.png";
 
 const DOMINIO_INTERNO = "e4cc.local";
 
@@ -149,7 +150,16 @@ function PantallaAcceso() {
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between px-6 py-4">
-        <span className="text-sm font-semibold tracking-tight text-foreground">E4CC</span>
+        <div className="flex items-center gap-2.5">
+          <img
+            src={logoE4cc}
+            alt="E4CC"
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+          <span className="text-sm font-semibold tracking-tight text-foreground">
+            E4CC
+          </span>
+        </div>
         <AlternadorTema />
       </header>
 
