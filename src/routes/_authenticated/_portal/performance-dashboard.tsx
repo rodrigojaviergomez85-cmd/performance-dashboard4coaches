@@ -322,7 +322,7 @@ function PerformanceDashboard() {
           <p className="text-sm font-bold text-banner-foreground">Q{quarter} {year}</p>
           <p className="text-xs text-banner-foreground/80">{mesesTexto}</p>
         </div>
-        <div className={cn("rounded-full px-4 py-1.5 text-base font-bold", categoria === "BAD" ? "bg-bad/15 text-bad" : categoria ? "bg-status-ok text-status-ok-foreground" : "bg-muted text-muted-foreground")}>
+        <div className={cn("rounded-full px-4 py-1.5 text-base font-bold", categoria === "BAD" ? "bg-card text-bad" : categoria ? "bg-status-ok text-status-ok-foreground" : "bg-muted text-muted-foreground")}>
           {categoria ?? "NO DATA"}
         </div>
       </div>
