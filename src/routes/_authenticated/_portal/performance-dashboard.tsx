@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Award, Info, Moon, Sparkles, Sun } from "lucide-react";
+import { ChevronDown, Info, Moon, Sparkles, Sun } from "lucide-react";
 import {
   comentariosCsat,
   detalleQa,
@@ -113,6 +113,65 @@ function TarjetaLock({
   );
 }
 
+type Celda = { valor: string; sub: string };
+type FilaResumen = { clave: string; titulo: string; subtitulo: string; meses: (Celda & { etiqueta: string })[]; total: Celda; estado: string | null; tono?: "verde" | "amarillo" | "rojo" };
+
+function tonoEstado(estado: string | null, tono?: string) {
+  if (!estado) return "gris";
+  if (tono) return tono;
+  const e = estado.toUpperCase();
+  if (e.includes("ALMOST") || e.includes("NEAR")) return "amarillo";
+  if (e.includes("BAD") || e.includes("OFF") || e.includes("BELOW")) return "rojo";
+  return "verde";
+}
+
+function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaResumen[]; abierta: string | null; alAbrir: (clave: string) => void; quarter: number }) {
+  const etiquetas = filas.find((f) => f.meses.length)?.meses.map((m) => m.etiqueta) ?? [];
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+      <table className="w-full min-w-[720px] text-sm">
+        <thead>
+          <tr className="border-b border-border text-[10px] font-semibold uppercase text-muted-foreground">
+            <th className="px-4 py-2.5 text-left">Metric</th>
+            {etiquetas.map((e) => <th key={e} className="px-3 py-2.5 text-center">{e}</th>)}
+            <th className="bg-scorecard-total px-3 py-2.5 text-center text-scorecard-brand">Q{quarter} Total</th>
+            <th className="px-3 py-2.5 text-center">Status</th>
+            <th className="w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => {
+            const activa = abierta === f.clave;
+            const t = tonoEstado(f.estado, f.tono);
+            return (
+              <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50", activa && "bg-scorecard-total/60")}>
+                <td className="px-4 py-2.5">
+                  <p className="font-semibold text-foreground">{f.titulo}</p>
+                  <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>
+                </td>
+                {f.meses.map((m) => (
+                  <td key={m.etiqueta} className="px-3 py-2.5 text-center">
+                    <p className="font-bold tabular-nums text-foreground">{m.valor}</p>
+                    <p className="text-[10px] text-muted-foreground">{m.sub}</p>
+                  </td>
+                ))}
+                <td className="bg-scorecard-total px-3 py-2.5 text-center">
+                  <p className="font-bold tabular-nums text-foreground">{f.total.valor}</p>
+                  <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>
+                </td>
+                <td className="px-3 py-2.5 text-center">
+                  <span className={cn("inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase", t === "verde" ? "border-superstar bg-superstar/15 text-superstar" : t === "amarillo" ? "border-great bg-great/20 text-great-text" : t === "rojo" ? "border-bad bg-bad/15 text-bad" : "border-border bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
+                </td>
+                <td className="pr-3 text-muted-foreground"><ChevronDown className={cn("h-4 w-4 transition-transform", activa && "rotate-180")} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PerformanceDashboard() {
   const panel = useServerFn(panelDesempeno);
   const directorio = useServerFn(directorioCoaches);
@@ -125,7 +184,7 @@ function PerformanceDashboard() {
   const [syllabus, setSyllabus] = useState<string | null>(null);
   const [clase, setClase] = useState<string | null>(null);
   const [vistaAnual, setVistaAnual] = useState(false);
-  const [mostrarQa, setMostrarQa] = useState(false);
+  const [abierta, setAbierta] = useState<string | null>(null);
 
   const [paginaCsat, setPaginaCsat] = useState(0);
   const POR_PAGINA_CSAT = 25;
@@ -136,7 +195,7 @@ function PerformanceDashboard() {
     setSyllabus(null);
     setClase(null);
     setPaginaCsat(0);
-    setMostrarQa(false);
+    setAbierta(null);
   }, [coachId, year, quarter]);
 
   const argumentos = { coachId, year, quarter };
@@ -155,7 +214,7 @@ function PerformanceDashboard() {
   const qaConsulta = useQuery({
     queryKey: ["qa-detalle", coachId, year, quarter],
     queryFn: () => qaDetalle({ data: argumentos }),
-    enabled: mostrarQa,
+    enabled: abierta === "qa",
   });
   const qa = qaConsulta.data;
   const hayFiltrosCsat = mes !== null || syllabus !== null || clase !== null;
@@ -181,6 +240,45 @@ function PerformanceDashboard() {
   const diferencia = data.tardanzas - data.tardanzasPrevias;
   const categoria = data.trimestre.categoria;
   const alertas = data.alertas;
+  const fmt2 = (v: number | null | undefined) => (v === null || v === undefined ? "—" : v.toFixed(2));
+  const dias = (d: number | null) => (d === null ? "—" : `${d} ${d === 1 ? "día" : "días"}`);
+  const sem = (w: number | null) => (w === null ? "No data" : `${w} ${w === 1 ? "semana" : "semanas"}`);
+  const hiresCelda = (h: any): Celda => h ? { valor: `${h.hires} / ${h.meta ?? "—"}`, sub: `2M+ ${h.cr2m === null ? "—" : `${h.cr2m.toFixed(2)}%`}` } : { valor: "—", sub: "No data" };
+  const incTot = data.incTotal;
+  const hTot = data.hiresTotal;
+  const filasResumen: FilaResumen[] = [
+    {
+      clave: "ret", titulo: "Retention", subtitulo: "CLV + DO",
+      meses: (data.retMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: m.retencion === null ? "—" : `${Math.round(m.retencion)}%`, sub: m.retencion === null ? "No data" : `DO ${m.doPct === null ? "—" : `${Math.round(m.doPct)}%`} · CLV ${m.clv ?? "—"}` })),
+      total: data.retTotal && data.retTotal.retencion !== null ? { valor: `${data.retTotal.retencion.toFixed(2)}%`, sub: `DO ${data.retTotal.doPct === null ? "—" : `${data.retTotal.doPct.toFixed(2)}%`} · CLV ${data.retTotal.clv ?? "—"}` } : { valor: "—", sub: "No data" },
+      estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
+    },
+    {
+      clave: "dsat", titulo: "DSAT", subtitulo: "Parent & student feedback",
+      meses: data.meses.map((m: any) => ({ etiqueta: m.etiqueta, valor: porcentaje(m.porcentaje), sub: m.denominador ? `${m.numerador} / ${m.denominador}` : "No data" })),
+      total: { valor: porcentaje(data.trimestre.porcentaje), sub: `${data.trimestre.numerador} / ${data.trimestre.denominador}` },
+      estado: categoria ?? null,
+    },
+    {
+      clave: "qa", titulo: "QA", subtitulo: "Average coach score",
+      meses: (data.qaMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: fmt2(m.promedio), sub: m.promedio === null ? "No data" : `${m.evaluaciones} ${m.evaluaciones === 1 ? "evaluation" : "evaluations"}` })),
+      total: data.qaTotal && data.qaTotal.promedio !== null ? { valor: fmt2(data.qaTotal.promedio), sub: `${data.qaTotal.evaluaciones} evaluations` } : { valor: "—", sub: "No data" },
+      estado: data.qaTotal?.frase ?? null,
+      tono: data.qaTotal?.promedio == null ? undefined : data.qaTotal.bloqueado ? "rojo" : (data.qa as any)?.advertencia ? "amarillo" : "verde",
+    },
+    {
+      clave: "inc", titulo: "Incidencias", subtitulo: "Unique days & weeks",
+      meses: (data.incMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: dias(m.dias), sub: sem(m.semanas) })),
+      total: incTot ? { valor: dias(incTot.dias), sub: sem(incTot.semanas) } : { valor: "—", sub: "No data" },
+      estado: !incTot || incTot.dias === null ? null : incTot.dias > 3 ? "OFF TARGET" : "ON TARGET",
+    },
+    {
+      clave: "hires", titulo: "Hires", subtitulo: "Meta + 2M+",
+      meses: (data.hiresMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, ...hiresCelda(m.datos) })),
+      total: hiresCelda(hTot),
+      estado: !hTot || !hTot.estado2m ? null : hTot.estado2m === "verde" ? "ON TARGET" : hTot.estado2m === "amarillo" ? "ALMOST THERE" : "OFF TARGET",
+    },
+  ];
 
   return (
     <section className="scorecard-page">
@@ -409,7 +507,7 @@ function PerformanceDashboard() {
             <p className="text-[10px] text-muted-foreground">Quarter checks · effect on payout pending policy confirmation</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setMostrarQa((actual) => !actual)} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
+            <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setAbierta("qa")} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
             <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Limit is 3 days" {...(data.incidencias >= 3 ? { tono: "warning" as const } : {})} />
             <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
             <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota={data.nl === null ? "No NL evaluations this quarter" : "≥70% booster pending confirmation"} {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
