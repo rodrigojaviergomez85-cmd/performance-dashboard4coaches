@@ -48,7 +48,7 @@ export function BarraLateral({ nombre, rol }: { nombre: string; rol: string }) {
             to={enlace.to}
             className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
             activeProps={{
-              className: "rounded-md px-3 py-2 text-sm font-medium bg-primary/10 text-primary",
+              className: "rounded-md px-3 py-2 text-sm font-medium bg-scorecard-total text-scorecard-brand shadow-[inset_3px_0_0_var(--scorecard-orange)]",
             }}
           >
             {enlace.etiqueta}
