@@ -125,14 +125,14 @@ function tonoEstado(estado: string | null, tono?: string) {
 function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaResumen[]; abierta: string | null; alAbrir: (clave: string) => void; quarter: number }) {
   const etiquetas = filas.find((f) => f.meses.length)?.meses.map((m) => m.etiqueta) ?? [];
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-sm">
+    <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-border text-[10px] font-semibold uppercase text-muted-foreground">
-            <th className="px-4 py-2.5 text-left">Metric</th>
-            {etiquetas.map((e) => <th key={e} className="px-3 py-2.5 text-center">{e}</th>)}
-            <th className="bg-scorecard-total px-3 py-2.5 text-center text-scorecard-brand">Q{quarter} Total</th>
-            <th className="px-3 py-2.5 text-center">Status</th>
+            <th className="px-4 py-2 text-left">Metric</th>
+            {etiquetas.map((e) => <th key={e} className="px-3 py-2 text-center">{e}</th>)}
+            <th className="bg-scorecard-total px-3 py-2 text-center text-scorecard-brand">Q{quarter} Total</th>
+            <th className="px-3 py-2 text-center">Status</th>
             <th className="w-8" />
           </tr>
         </thead>
@@ -141,23 +141,23 @@ function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaRes
             const activa = abierta === f.clave;
             const t = tonoEstado(f.estado, f.tono);
             return (
-              <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50", activa && "bg-scorecard-total/60")}>
-                <td className="px-4 py-2.5">
-                  <p className="font-semibold text-foreground">{f.titulo}</p>
+              <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-scorecard-total/60", activa && "bg-scorecard-total shadow-[inset_3px_0_0_var(--scorecard-brand)]")}>
+                <td className="px-4 py-2">
+                  <p className={cn("font-bold text-foreground", activa && "text-scorecard-brand")}>{f.titulo}</p>
                   {f.subtitulo && <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>}
                 </td>
                 {f.meses.map((m) => (
-                  <td key={m.etiqueta} className="px-3 py-2.5 text-center">
+                  <td key={m.etiqueta} className="px-3 py-2 text-center">
                     <p className="font-bold tabular-nums text-foreground">{m.valor}</p>
                     {m.sub && <p className="text-[10px] text-muted-foreground">{m.sub}</p>}
                   </td>
                 ))}
-                <td className="bg-scorecard-total px-3 py-2.5 text-center">
+                <td className="bg-scorecard-total px-3 py-2 text-center">
                   <p className="font-bold tabular-nums text-foreground">{f.total.valor}</p>
                   {f.total.sub && <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>}
                 </td>
-                <td className="px-3 py-2.5 text-center">
-                  <span className={cn("inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold uppercase", t === "verde" ? "border-superstar bg-superstar/15 text-superstar" : t === "amarillo" ? "border-great bg-great/20 text-great-text" : t === "rojo" ? "border-bad bg-bad/15 text-bad" : "border-border bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
+                <td className="px-3 py-2 text-center">
+                  <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase", t === "verde" ? "bg-status-ok text-status-ok-foreground" : t === "amarillo" ? "bg-great/20 text-great-text" : t === "rojo" ? "bg-bad/12 text-bad" : "bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
                 </td>
                 <td className="pr-3 text-muted-foreground"><ChevronDown className={cn("h-4 w-4 transition-transform", activa && "rotate-180")} /></td>
               </tr>
@@ -282,7 +282,7 @@ function PerformanceDashboard() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-scorecard-brand" />
+            <span className="h-4 w-1 rounded-full bg-scorecard-orange" />
             <h1 className="text-sm font-bold text-foreground">Coach Scorecard</h1>
           </div>
           <p className="mt-1 text-[10px] uppercase text-muted-foreground">Coach Performance</p>
@@ -491,7 +491,7 @@ function PerformanceDashboard() {
             <p className="scorecard-label">Alerts</p>
             <div className="mt-2 space-y-1">
               {alertas.map((alerta) => (
-                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-scorecard-alert text-scorecard-alert-foreground" : alerta.tono === "critico" ? "bg-destructive/10 text-destructive" : "bg-muted text-foreground")}>
+                <div key={alerta.texto} className={cn("flex items-center gap-2 rounded px-2 py-1 text-[11px]", alerta.tono === "ok" ? "bg-status-ok text-status-ok-foreground" : alerta.tono === "critico" ? "bg-destructive/10 font-medium text-destructive" : "bg-muted text-foreground")}>
                   <Sparkles className="h-3.5 w-3.5" />
                   {alerta.texto}
                 </div>
