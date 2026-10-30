@@ -554,7 +554,7 @@ function DetalleHires({ quarter, total, filas }: { quarter: number; total: numbe
     <div className="mt-3 flex flex-col gap-2">
       <div className="rounded-md border border-border border-l-4 border-l-scorecard-brand bg-scorecard-total px-4 py-3">
         {total > 0 ? (
-          <p className="text-base font-bold text-foreground">You changed <span className="text-accent tabular-nums">{total}</span> {total === 1 ? "life" : "lives"}.</p>
+          <p className="text-base font-bold text-foreground">You changed <span className="text-scorecard-orange tabular-nums">{total}</span> {total === 1 ? "life" : "lives"}.</p>
         ) : (
           <p className="text-base font-bold text-foreground">Keep going, Coach.</p>
         )}
