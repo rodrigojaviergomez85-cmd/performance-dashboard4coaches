@@ -381,8 +381,8 @@ function PerformanceDashboard() {
                   <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
                 </Select>
                 <Select value={clase ?? "all"} onValueChange={(valor) => setClase(valor === "all" ? null : valor)}>
-                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="All classes" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All classes</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="All schedules" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All schedules</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
                 </Select>
               </>
             }
