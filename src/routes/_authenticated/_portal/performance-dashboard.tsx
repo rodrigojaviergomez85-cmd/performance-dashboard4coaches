@@ -201,10 +201,20 @@ function PerformanceDashboard() {
     queryKey: ["panel", coachId, year, quarter],
     queryFn: () => panel({ data: argumentos }),
   });
+  // Trae todos los comentarios del trimestre (en páginas de 100) para que pestañas y resúmenes usen la misma población.
   const csatConsulta = useQuery({
-    queryKey: ["csat", coachId, year, quarter, mes, syllabus, clase, paginaCsat],
-    queryFn: () =>
-      comentarios({ data: { ...argumentos, mes, syllabus, clase, texto: null, pagina: paginaCsat, porPagina: POR_PAGINA_CSAT } }),
+    queryKey: ["csat-todo", coachId, year, quarter, syllabus, clase],
+    queryFn: async () => {
+      const filas: any[] = [];
+      let primera: any = null;
+      for (let pagina = 0; pagina < 200; pagina++) {
+        const r = await comentarios({ data: { ...argumentos, mes: null, syllabus, clase, texto: null, pagina, porPagina: 100 } });
+        primera ??= r;
+        filas.push(...r.filas);
+        if ((pagina + 1) * 100 >= r.total || !r.filas.length) break;
+      }
+      return { ...primera, filas };
+    },
     placeholderData: (previo) => previo,
   });
   const csat = csatConsulta.data;
