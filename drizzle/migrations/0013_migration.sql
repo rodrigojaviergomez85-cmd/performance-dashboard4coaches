@@ -1,0 +1,1 @@
+ALTER TABLE public.retencion ADD COLUMN IF NOT EXISTS clases jsonb;

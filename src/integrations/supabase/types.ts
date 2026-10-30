@@ -825,6 +825,7 @@ export type Database = {
         Row: {
           active_students: number | null
           category: string | null
+          clases: Json | null
           clv: number | null
           coach: string | null
           coach_id: number
@@ -842,6 +843,7 @@ export type Database = {
         Insert: {
           active_students?: number | null
           category?: string | null
+          clases?: Json | null
           clv?: number | null
           coach?: string | null
           coach_id: number
@@ -859,6 +861,7 @@ export type Database = {
         Update: {
           active_students?: number | null
           category?: string | null
+          clases?: Json | null
           clv?: number | null
           coach?: string | null
           coach_id?: number
