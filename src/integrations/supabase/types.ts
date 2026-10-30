@@ -836,6 +836,7 @@ export type Database = {
           fc_do: number | null
           fc_do_pct: number | null
           id: string
+          niveles: Json | null
           period_month: string
           retention_pct: number | null
           sucursal: string | null
@@ -854,6 +855,7 @@ export type Database = {
           fc_do?: number | null
           fc_do_pct?: number | null
           id?: string
+          niveles?: Json | null
           period_month: string
           retention_pct?: number | null
           sucursal?: string | null
@@ -872,6 +874,7 @@ export type Database = {
           fc_do?: number | null
           fc_do_pct?: number | null
           id?: string
+          niveles?: Json | null
           period_month?: string
           retention_pct?: number | null
           sucursal?: string | null
