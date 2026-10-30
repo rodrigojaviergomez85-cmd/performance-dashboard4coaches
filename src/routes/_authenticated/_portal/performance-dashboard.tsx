@@ -554,7 +554,7 @@ function DetalleHires({ quarter, total, filas }: { quarter: number; total: numbe
     <div className="mt-3 flex flex-col gap-2">
       <div className="rounded-md border border-border border-l-4 border-l-scorecard-brand bg-scorecard-total px-4 py-3">
         {total > 0 ? (
-          <p className="text-base font-bold text-foreground">You changed <span className="text-scorecard-orange tabular-nums">{total}</span> {total === 1 ? "life" : "lives"}.</p>
+          <p className="text-base font-bold text-foreground">You have changed <span className="text-scorecard-orange tabular-nums">{total}</span> {total === 1 ? "life" : "lives"}.</p>
         ) : (
           <p className="text-base font-bold text-foreground">Keep going, Coach.</p>
         )}
@@ -571,15 +571,14 @@ function DetalleHires({ quarter, total, filas }: { quarter: number; total: numbe
       <div className="overflow-x-auto rounded-md border border-border bg-card">
         <Table className="text-[14px]">
           <TableHeader><TableRow className="bg-muted/60 [&>th]:text-[13px] [&>th]:font-semibold">
-            <TableHead className="w-40">Hire Date</TableHead><TableHead>Trainee</TableHead><TableHead className="w-24">Level</TableHead>
+            <TableHead className="w-40">Hire Date</TableHead><TableHead>Trainee</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {!visibles.length ? <TableRow><TableCell colSpan={3} className="h-12 text-center text-sm text-muted-foreground">No hires recorded for this period.</TableCell></TableRow>
+            {!visibles.length ? <TableRow><TableCell colSpan={2} className="h-12 text-center text-sm text-muted-foreground">No hires recorded for this period.</TableCell></TableRow>
             : visibles.map((f) => (
               <TableRow key={`${f.mes}-${f.student_id}`}>
                 <TableCell className="whitespace-nowrap">{fechaLegible(f.fecha)}</TableCell>
                 <TableCell>{f.trainee ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">—</TableCell>
               </TableRow>
             ))}
           </TableBody>
