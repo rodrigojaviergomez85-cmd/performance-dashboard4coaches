@@ -577,7 +577,6 @@ export const detalleQa = createServerFn({ method: "POST" })
         mes: f.qaMes.month,
         nota: f.nota_final,
         tendencia: f.tendencia,
-        bloqueado: rangoQa(promedioQa([f.nota_final])),
         clase: f.clave,
         syllabus: f.quality_type,
         level: f.level,
