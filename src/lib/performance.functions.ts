@@ -19,6 +19,7 @@ import {
   retencionTrimestre,
   resumenHires,
   estadoCr2m,
+  contarLlegadasTarde,
 } from "@/lib/reglas";
 
 /**
