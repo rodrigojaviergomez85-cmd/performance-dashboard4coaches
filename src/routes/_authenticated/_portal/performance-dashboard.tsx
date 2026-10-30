@@ -251,7 +251,7 @@ function PerformanceDashboard() {
       estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
     },
     {
-      clave: "dsat", titulo: "DSAT",
+      clave: "dsat", titulo: "CSAT",
       meses: data.meses.map((m: any) => ({ etiqueta: m.etiqueta, valor: porcentaje(m.porcentaje) })),
       total: { valor: porcentaje(data.trimestre.porcentaje) },
       estado: categoria ?? null,
@@ -343,7 +343,7 @@ function PerformanceDashboard() {
       {vistaAnual && (
         <div className="overflow-x-auto rounded-md border border-border bg-card">
           <Table className="text-xs">
-            <TableHeader><TableRow className="bg-muted/60"><TableHead>Month</TableHead><TableHead>DSAT</TableHead><TableHead>Category</TableHead><TableHead>QA</TableHead><TableHead>Incidencias</TableHead><TableHead>Lateness</TableHead><TableHead>NL</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow className="bg-muted/60"><TableHead>Month</TableHead><TableHead>CSAT</TableHead><TableHead>Category</TableHead><TableHead>QA</TableHead><TableHead>Incidencias</TableHead><TableHead>Lateness</TableHead><TableHead>NL</TableHead></TableRow></TableHeader>
             <TableBody>{data.anual.map((fila) => <TableRow key={fila.mes}><TableCell>{fila.etiqueta}</TableCell><TableCell>{porcentaje(fila.dsat)}</TableCell><TableCell>{fila.categoria ?? "NO DATA"}</TableCell><TableCell>{fila.qaFrase ?? "—"}</TableCell><TableCell>{fila.incidencias}</TableCell><TableCell>{fila.tardanzas}</TableCell><TableCell>{porcentaje(fila.nl)}</TableCell></TableRow>)}</TableBody>
           </Table>
         </div>
@@ -365,7 +365,7 @@ function PerformanceDashboard() {
 
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">CSAT Comments</h2>
-            <p className="text-[10px] text-muted-foreground">What parents & students are saying — every DSAT survey this quarter</p>
+            <p className="text-[10px] text-muted-foreground">What parents & students are saying — every CSAT survey this quarter</p>
           </div>
           <div className="rounded-md border border-border bg-card p-3 shadow-sm">
             <div className="mb-3 flex flex-wrap gap-2">
@@ -393,7 +393,7 @@ function PerformanceDashboard() {
                 <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.cuenta ? "Yes" : "No"}</TableCell><TableCell>{fila.cuenta ? "—" : fila.razon_no_cuenta ?? "No score"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">{csatConsulta.isError ? <span className="text-destructive">Could not load comments. <Button variant="link" size="sm" onClick={() => csatConsulta.refetch()}>Retry</Button></span> : csatConsulta.isLoading ? "Loading…" : hayFiltrosCsat ? "No comments match these filters." : "No comments this quarter."}</TableCell></TableRow>}</TableBody>
               </Table>
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward DSAT — the reason is shown.</p>
+            <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward CSAT — the reason is shown.</p>
           </div>
 
             </div>
@@ -505,7 +505,7 @@ function PerformanceDashboard() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TarjetaLock titulo="QA Results" valor={data.qa.frase ?? "No data"} nota={data.qa.frase ? "Minimum average 7.5" : "No QA evaluations this quarter"} accion={() => setAbierta("qa")} {...(data.qa.frase ? { tono: data.qa.bloqueado || data.qa.advertencia ? ("warning" as const) : ("success" as const) } : {})} />
             <TarjetaLock titulo="Incidencias" valor={String(data.incidencias)} sufijo="days" nota="Limit is 3 days" {...(data.incidencias >= 3 ? { tono: "warning" as const } : {})} />
-            <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="events" nota={diferencia === 0 ? "For awareness only" : `${Math.abs(diferencia)} ${diferencia > 0 ? "more" : "fewer"} than prior quarter`} />
+            <TarjetaLock titulo="Lateness" valor={String(data.tardanzas)} sufijo="late arrivals" nota="Accumulated this quarter" />
             <TarjetaLock titulo="NL" valor={porcentaje(data.nl)} nota={data.nl === null ? "No NL evaluations this quarter" : "≥70% booster pending confirmation"} {...(data.nl !== null && data.nl >= 70 ? { tono: "success" as const } : {})} />
           </div>
 

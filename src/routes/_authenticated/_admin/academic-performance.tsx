@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/_admin/academic-performanc
       { title: "Academic Performance | Portal de Coaches E4CC" },
       {
         name: "description",
-        content: "Carga y revisión de QA, DSAT, NL, ausencias y tardanzas de los coaches E4CC.",
+        content: "Carga y revisión de QA, CSAT, NL, ausencias y tardanzas de los coaches E4CC.",
       },
       {
         property: "og:title",
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/_admin/academic-performanc
 const PESTANAS = ["qa", "dsat", "nl", "retention", "hires", "abs"] as const;
 const ETIQUETAS: Record<(typeof PESTANAS)[number], string> = {
   qa: "QA",
-  dsat: "DSAT",
+  dsat: "CSAT",
   nl: "NL",
   retention: "Retention",
   hires: "Hires",
