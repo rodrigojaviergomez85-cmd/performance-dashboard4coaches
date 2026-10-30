@@ -234,7 +234,6 @@ function PerformanceDashboard() {
     return <section className="p-8 text-sm text-muted-foreground">Cargando scorecard…</section>;
   }
 
-  const diferencia = data.tardanzas - data.tardanzasPrevias;
   const categoria = data.trimestre.categoria;
   const alertas = data.alertas;
   const fmt2 = (v: number | null | undefined) => (v === null || v === undefined ? "—" : v.toFixed(2));
