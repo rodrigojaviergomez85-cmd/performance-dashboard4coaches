@@ -407,6 +407,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       incTotal,
       retMeses,
       retTotal,
+      retClases,
       hiresMeses,
       hiresTotal,
       qa: {

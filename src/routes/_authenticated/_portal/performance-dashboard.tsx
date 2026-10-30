@@ -128,7 +128,7 @@ function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaRes
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <table className="w-full min-w-[720px] text-sm">
         <thead>
-          <tr className="border-b border-border text-[10px] font-semibold uppercase text-muted-foreground">
+          <tr className="border-b border-border text-[13px] font-semibold uppercase text-muted-foreground">
             <th className="px-4 py-2 text-left">Metric</th>
             {etiquetas.map((e) => <th key={e} className="px-3 py-2 text-center">{e}</th>)}
             <th className="bg-scorecard-total px-3 py-2 text-center text-scorecard-brand">Q{quarter} Total</th>
@@ -143,21 +143,21 @@ function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaRes
             return (
               <tr key={f.clave} onClick={() => alAbrir(f.clave)} aria-expanded={activa} className={cn("cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-scorecard-total/60", activa && "bg-scorecard-total shadow-[inset_3px_0_0_var(--scorecard-brand)]")}>
                 <td className="px-4 py-2">
-                  <p className={cn("font-bold text-foreground", activa && "text-scorecard-brand")}>{f.titulo}</p>
-                  {f.subtitulo && <p className="text-[11px] text-muted-foreground">{f.subtitulo}</p>}
+                  <p className={cn("text-[15px] font-bold text-foreground", activa && "text-scorecard-brand")}>{f.titulo}</p>
+                  {f.subtitulo && <p className="text-[13px] text-muted-foreground">{f.subtitulo}</p>}
                 </td>
                 {f.meses.map((m) => (
                   <td key={m.etiqueta} className="px-3 py-2 text-center">
-                    <p className="font-bold tabular-nums text-foreground">{m.valor}</p>
-                    {m.sub && <p className="text-[10px] text-muted-foreground">{m.sub}</p>}
+                    <p className="text-[15px] font-semibold tabular-nums text-foreground">{m.valor}</p>
+                    {m.sub && <p className="text-[12px] text-muted-foreground">{m.sub}</p>}
                   </td>
                 ))}
                 <td className="bg-scorecard-total px-3 py-2 text-center">
-                  <p className="font-bold tabular-nums text-foreground">{f.total.valor}</p>
-                  {f.total.sub && <p className="text-[10px] text-muted-foreground">{f.total.sub}</p>}
+                  <p className="text-[17px] font-bold tabular-nums text-foreground">{f.total.valor}</p>
+                  {f.total.sub && <p className="text-[12px] text-muted-foreground">{f.total.sub}</p>}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  <span className={cn("inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase", t === "verde" ? "bg-status-ok text-status-ok-foreground" : t === "amarillo" ? "bg-great/20 text-great-text" : t === "rojo" ? "bg-bad/12 text-bad" : "bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
+                  <span className={cn("inline-block rounded-full px-3 py-0.5 text-[12px] font-semibold uppercase whitespace-nowrap", t === "verde" ? "bg-status-ok text-status-ok-foreground" : t === "amarillo" ? "bg-great/20 text-great-text" : t === "rojo" ? "bg-bad/12 text-bad" : "bg-muted text-muted-foreground")}>{f.estado ?? "No data"}</span>
                 </td>
                 <td className="pr-3 text-muted-foreground"><ChevronDown className={cn("h-4 w-4 transition-transform", activa && "rotate-180")} /></td>
               </tr>
@@ -244,10 +244,11 @@ function PerformanceDashboard() {
   const hTot = data.hiresTotal;
   const filasResumen: FilaResumen[] = [
     {
-      clave: "ret", titulo: "Retention", subtitulo: "CLV + DO",
-      meses: (data.retMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: m.retencion === null ? "—" : `${Math.round(m.retencion)}%`, sub: m.retencion === null ? "No data" : `DO ${m.doPct === null ? "—" : `${Math.round(m.doPct)}%`} · CLV ${m.clv ?? "—"}` })),
-      total: data.retTotal && data.retTotal.retencion !== null ? { valor: `${data.retTotal.retencion.toFixed(2)}%`, sub: `DO ${data.retTotal.doPct === null ? "—" : `${data.retTotal.doPct.toFixed(2)}%`} · CLV ${data.retTotal.clv ?? "—"}` } : { valor: "—", sub: "No data" },
-      estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
+      clave: "qa", titulo: "QA", subtitulo: "Average coach score",
+      meses: (data.qaMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: fmt2(m.promedio), sub: m.promedio === null ? "No data" : `${m.evaluaciones} ${m.evaluaciones === 1 ? "evaluation" : "evaluations"}` })),
+      total: data.qaTotal && data.qaTotal.promedio !== null ? { valor: fmt2(data.qaTotal.promedio), sub: `${data.qaTotal.evaluaciones} evaluations` } : { valor: "—", sub: "No data" },
+      estado: data.qaTotal?.frase ?? null,
+      tono: data.qaTotal?.promedio == null ? undefined : data.qaTotal.bloqueado ? "rojo" : (data.qa as any)?.advertencia ? "amarillo" : "verde",
     },
     {
       clave: "dsat", titulo: "CSAT",
@@ -256,23 +257,22 @@ function PerformanceDashboard() {
       estado: categoria ?? null,
     },
     {
-      clave: "qa", titulo: "QA", subtitulo: "Average coach score",
-      meses: (data.qaMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: fmt2(m.promedio), sub: m.promedio === null ? "No data" : `${m.evaluaciones} ${m.evaluaciones === 1 ? "evaluation" : "evaluations"}` })),
-      total: data.qaTotal && data.qaTotal.promedio !== null ? { valor: fmt2(data.qaTotal.promedio), sub: `${data.qaTotal.evaluaciones} evaluations` } : { valor: "—", sub: "No data" },
-      estado: data.qaTotal?.frase ?? null,
-      tono: data.qaTotal?.promedio == null ? undefined : data.qaTotal.bloqueado ? "rojo" : (data.qa as any)?.advertencia ? "amarillo" : "verde",
+      clave: "hires", titulo: "Hires", subtitulo: "Meta + 2M+",
+      meses: (data.hiresMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, ...hiresCelda(m.datos) })),
+      total: hiresCelda(hTot),
+      estado: !hTot || !hTot.estado2m ? null : hTot.estado2m === "verde" ? "ON TARGET" : hTot.estado2m === "amarillo" ? "ALMOST THERE" : "OFF TARGET",
+    },
+    {
+      clave: "ret", titulo: "Retention", subtitulo: "CLV + DO",
+      meses: (data.retMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: m.retencion === null ? "—" : `${Math.round(m.retencion)}%`, sub: m.retencion === null ? "No data" : `DO ${m.doPct === null ? "—" : `${Math.round(m.doPct)}%`} · CLV ${m.clv ?? "—"}` })),
+      total: data.retTotal && data.retTotal.retencion !== null ? { valor: `${data.retTotal.retencion.toFixed(2)}%`, sub: `DO ${data.retTotal.doPct === null ? "—" : `${data.retTotal.doPct.toFixed(2)}%`} · CLV ${data.retTotal.clv ?? "—"}` } : { valor: "—", sub: "No data" },
+      estado: data.retTotal?.retencion != null ? data.retTotal.categoria ?? null : null,
     },
     {
       clave: "inc", titulo: "Incidencias",
       meses: (data.incMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, valor: dias(m.dias), sub: sem(m.semanas) })),
       total: incTot ? { valor: dias(incTot.dias), sub: sem(incTot.semanas) } : { valor: "—", sub: "No data" },
       estado: !incTot || incTot.dias === null ? null : incTot.dias > 3 ? "OFF TARGET" : "ON TARGET",
-    },
-    {
-      clave: "hires", titulo: "Hires", subtitulo: "Meta + 2M+",
-      meses: (data.hiresMeses ?? []).map((m: any) => ({ etiqueta: m.etiqueta, ...hiresCelda(m.datos) })),
-      total: hiresCelda(hTot),
-      estado: !hTot || !hTot.estado2m ? null : hTot.estado2m === "verde" ? "ON TARGET" : hTot.estado2m === "amarillo" ? "ALMOST THERE" : "OFF TARGET",
     },
   ];
 
@@ -282,9 +282,9 @@ function PerformanceDashboard() {
         <div>
           <div className="flex items-center gap-2">
             <span className="h-4 w-1 rounded-full bg-scorecard-orange" />
-            <h1 className="text-sm font-bold text-foreground">Coach Scorecard</h1>
+            <h1 className="text-xl font-bold text-foreground">Coach Scorecard</h1>
           </div>
-          <p className="mt-1 text-[10px] uppercase text-muted-foreground">Coach Performance</p>
+          <p className="mt-1 text-xs uppercase text-muted-foreground">Coach Performance</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => document.documentElement.classList.toggle("dark")} aria-label="Cambiar tema">
@@ -438,23 +438,25 @@ function PerformanceDashboard() {
 
           </div>}
           {abierta === "ret" && <div className="scorecard-detail">
-          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
-            <h2 className="text-sm font-bold text-foreground">Retention — Q{quarter} {year}</h2>
-            <p className="text-[10px] text-muted-foreground">Source: COACH GRAL · quarter uses combined students, not an average</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[...(data.retMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.retTotal ? [{ ...data.retTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
-              <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.retencion === null ? "scorecard-empty" : estadoCategoria(m.categoria))}>
-                <p className="scorecard-label">{m.etiqueta}</p>
-                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.retencion === null ? "—" : `${m.total ? m.retencion.toFixed(2) : Math.round(m.retencion)}%`}</p>
-                <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{m.retencion === null ? "No data" : m.categoria ?? "—"}</p>
-                {m.retencion !== null && (
-                  <p className="mt-3 text-[10px] text-muted-foreground">DO {m.doPct === null ? "—" : `${m.total ? m.doPct.toFixed(2) : Math.round(m.doPct)}%`} · CLV {m.clv ?? "—"}</p>
-                )}
-              </div>
-            ))}
-          </div>
-
+          <h2 className="pt-1 text-lg font-bold text-foreground">Retention by Class</h2>
+          {(data.retClases ?? []).length === 0 ? (
+            <p className="rounded-md border border-border bg-muted/40 py-4 text-center text-sm font-semibold uppercase text-muted-foreground">No data</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-border">
+              <Table className="text-sm">
+                <TableHeader><TableRow className="bg-muted/60"><TableHead className="text-[13px] font-semibold uppercase">Month</TableHead><TableHead className="text-[13px] font-semibold uppercase">Schedule</TableHead><TableHead className="text-right text-[13px] font-semibold uppercase">Retention %</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {(data.retClases ?? []).map((c: any) => (
+                    <TableRow key={`${c.mes}-${c.horario}`}>
+                      <TableCell className="py-1.5 text-[14px] uppercase">{c.etiqueta}</TableCell>
+                      <TableCell className="py-1.5 text-[14px] tabular-nums">{c.horario}</TableCell>
+                      <TableCell className="py-1.5 text-right text-[15px] font-semibold tabular-nums">{Math.round(c.retencion)}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
           </div>}
           {abierta === "hires" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
