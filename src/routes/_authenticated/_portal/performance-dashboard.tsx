@@ -407,11 +407,7 @@ function PerformanceDashboard() {
             ))}
           </div>
 
-          {(
-            <div className="mt-3 overflow-x-auto rounded-md border border-border bg-card">
-              <Table className="text-xs"><TableHeader><TableRow className="bg-muted/60"><TableHead>Quality type</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Evaluator</TableHead><TableHead>Result</TableHead></TableRow></TableHeader><TableBody>{qaConsulta.isLoading ? <TableRow><TableCell colSpan={5} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow> : qaConsulta.isError ? <TableRow><TableCell colSpan={5} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => qaConsulta.refetch()}>Retry</Button></TableCell></TableRow> : !(qa?.filas ?? []).length ? <TableRow><TableCell colSpan={5} className="h-12 text-center text-muted-foreground">No QA evaluations this quarter.</TableCell></TableRow> : (qa?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.level ?? "—"}</TableCell><TableCell>{fila.schedule ?? "—"}</TableCell><TableCell>{fila.evaluador ?? "—"}</TableCell><TableCell>{fila.frase ?? "No score"}</TableCell></TableRow>)}</TableBody></Table>
-            </div>
-          )}
+          <DetalleQa quarter={quarter} consulta={qaConsulta} />
             </div>
           )}
           {abierta === "inc" && <div className="scorecard-detail">
@@ -506,5 +502,64 @@ function PerformanceDashboard() {
         </>
       )}
     </section>
+  );
+}
+const ABREV_QA = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DIC"];
+const MESES_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fechaLegible = (f: string | null) => {
+  if (!f) return "—";
+  const [y, m, d] = f.slice(0, 10).split("-");
+  return `${MESES_EN[Number(m) - 1]} ${d}, ${y}`;
+};
+
+function DetalleQa({ quarter, consulta }: { quarter: number; consulta: any }) {
+  const [tab, setTab] = useState(0);
+  const filas: any[] = consulta.data?.filas ?? [];
+  const meses = [1, 2, 3].map((i) => (quarter - 1) * 3 + i);
+  const ordenar = (xs: any[]) => [...xs].sort((a, b) => (a.fechaMonitoreo === b.fechaMonitoreo ? a.id - b.id : a.fechaMonitoreo < b.fechaMonitoreo ? -1 : 1));
+  const visibles = ordenar(tab === 0 ? filas : filas.filter((f) => f.mes === tab));
+  const tabs = [...meses.map((m) => ({ clave: m, etiqueta: ABREV_QA[m - 1], n: filas.filter((f) => f.mes === m).length })), { clave: 0, etiqueta: "Q TOTAL", n: filas.length }];
+  const cols = 8;
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <div role="tablist" className="flex w-fit flex-wrap gap-1 rounded-md bg-scorecard-total p-1">
+        {tabs.map((t) => (
+          <button key={t.clave} role="tab" aria-selected={tab === t.clave} onClick={() => setTab(t.clave)}
+            className={cn("rounded px-3 py-1.5 text-[13px] font-semibold tabular-nums transition-colors", tab === t.clave ? "bg-scorecard-brand text-primary-foreground shadow-sm" : "text-scorecard-brand hover:bg-card")}>
+            {t.etiqueta} ({t.n})
+          </button>
+        ))}
+      </div>
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <Table className="text-[14px]">
+          <TableHeader><TableRow className="bg-muted/60 [&>th]:text-[13px] [&>th]:font-semibold">
+            <TableHead>Monitoring Date</TableHead><TableHead>Quality Type</TableHead><TableHead>Level</TableHead><TableHead>Schedule</TableHead><TableHead>Score</TableHead><TableHead>Result</TableHead><TableHead>Trend</TableHead><TableHead>Evaluator</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {consulta.isLoading ? <TableRow><TableCell colSpan={cols} className="h-12 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+            : consulta.isError ? <TableRow><TableCell colSpan={cols} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => consulta.refetch()}>Retry</Button></TableCell></TableRow>
+            : !visibles.length ? <TableRow><TableCell colSpan={cols} className="h-12 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground">No QA evaluations</TableCell></TableRow>
+            : visibles.map((f) => {
+              const tono = f.nota == null ? "bg-muted text-muted-foreground" : f.bloqueado ? "bg-bad/15 text-bad" : f.frase === "ALMOST THERE" ? "bg-great/25 text-great-text" : "bg-status-ok text-status-ok-foreground";
+              const t = f.tendencia;
+              return (
+                <TableRow key={f.id}>
+                  <TableCell className="whitespace-nowrap">{fechaLegible(f.fechaMonitoreo)}</TableCell>
+                  <TableCell>{f.syllabus ?? "—"}</TableCell>
+                  <TableCell>{f.level ?? "—"}</TableCell>
+                  <TableCell>{f.schedule ?? "—"}</TableCell>
+                  <TableCell><span className={cn("inline-block rounded px-2 py-0.5 text-[15px] font-semibold tabular-nums", tono)}>{f.nota == null ? "—" : Number(f.nota).toFixed(2)}</span></TableCell>
+                  <TableCell><span className={cn("rounded px-2 py-0.5 text-[12px] font-semibold uppercase", tono)}>{f.frase ?? "No data"}</span></TableCell>
+                  <TableCell className={cn("whitespace-nowrap text-[13px] font-semibold tabular-nums", t == null ? "text-muted-foreground" : t > 0 ? "text-status-ok-foreground" : t < 0 ? "text-bad" : "text-muted-foreground")}>
+                    {t == null ? "—" : `${t > 0 ? "↑ +" : t < 0 ? "↓ " : "→ "}${t.toFixed(2)}`}{t != null && <span className="ml-1 font-normal text-muted-foreground">vs previous</span>}
+                  </TableCell>
+                  <TableCell className="text-[13px]">{f.evaluador ?? "—"}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
