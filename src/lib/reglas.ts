@@ -321,3 +321,16 @@ export function ordenarComentariosCsat<T extends { coach_score: number | null; p
     return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
   });
 }
+
+/** Tendencia QA: nota actual menos la evaluación anterior del coach por fecha de monitoreo (desempate por id). */
+export function tendenciasQa<T extends { id: number | string; fecha_monitoreo: string; nota_final: number | null }>(filas: T[]) {
+  const orden = [...filas].sort((a, b) =>
+    a.fecha_monitoreo !== b.fecha_monitoreo ? (a.fecha_monitoreo < b.fecha_monitoreo ? -1 : 1) : String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+  let previa: number | null = null;
+  return orden.map((f) => {
+    const nota = typeof f.nota_final === "number" && Number.isFinite(f.nota_final) ? f.nota_final : null;
+    const tendencia = nota !== null && previa !== null ? Math.round((nota - previa) * 100) / 100 : null;
+    if (nota !== null) previa = nota;
+    return { ...f, tendencia };
+  });
+}

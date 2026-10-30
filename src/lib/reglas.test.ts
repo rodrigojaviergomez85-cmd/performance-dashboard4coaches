@@ -227,3 +227,15 @@ describe("comentarios CSAT", () => {
     expect(r.map((f) => f.id)).toEqual([3, 2, 1]);
   });
 });
+
+import { tendenciasQa } from "./reglas";
+describe("tendenciasQa", () => {
+  it("compara con la evaluación anterior por fecha de monitoreo, sin importar el orden de carga", () => {
+    const r = tendenciasQa([
+      { id: 3, fecha_monitoreo: "2026-10-08", nota_final: 8.5 },
+      { id: 1, fecha_monitoreo: "2026-09-20", nota_final: 8 },
+      { id: 2, fecha_monitoreo: "2026-10-20", nota_final: 7.5 },
+    ]);
+    expect(r.map((f) => f.tendencia)).toEqual([null, 0.5, -1]);
+  });
+});

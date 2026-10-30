@@ -20,6 +20,7 @@ import {
   resumenHires,
   estadoCr2m,
   contarLlegadasTarde,
+  tendenciasQa,
 } from "@/lib/reglas";
 
 /**
@@ -538,7 +539,7 @@ const entradaQa = z.object({
   quarter: z.number().int().min(1).max(4),
 });
 
-/** Detalle de QA: solo frases, nunca la nota numérica por registro. */
+/** Detalle de QA por evaluación, con nota final y tendencia vs la evaluación previa. */
 export const detalleQa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => entradaQa.parse(input))
@@ -548,25 +549,22 @@ export const detalleQa = createServerFn({ method: "POST" })
 
     const inicioMes = (data.quarter - 1) * 3 + 1;
 
+    // Historial completo del coach: la tendencia compara con la evaluación previa aunque sea de otro trimestre.
+    const periodosQa = await leerPeriodosQa(supabaseAdmin);
     const filas = await todasLasFilas<any>(() =>
       supabaseAdmin
         .from("qa_evaluaciones")
         .select(
-          "id, fecha_ingresado, clave, quality_type, level, horario, gerente, nota_final, area_mejora, applicable",
+          "id, fecha_ingresado, fecha_monitoreo, clave, quality_type, level, horario, gerente, nota_final, area_mejora, applicable",
         )
         .eq("coach_id", coachId)
         .eq("applicable", 1)
-        .gte("fecha_ingresado", qaDesde(data.year))
-        .lt("fecha_ingresado", qaHasta(data.year))
-        .order("fecha_ingresado", { ascending: false })
         .order("id", { ascending: true }),
-    ).then(async (todas) => {
-      const periodosQa = await leerPeriodosQa(supabaseAdmin);
-      return todas.filter((f: any) => {
-        const m = mesQaDeFecha(periodosQa, f.fecha_ingresado);
-        return m.year === data.year && m.month >= inicioMes && m.month < inicioMes + 3;
-      });
-    });
+    ).then((todas) =>
+      tendenciasQa(todas)
+        .map((f: any) => ({ ...f, qaMes: f.fecha_ingresado ? mesQaDeFecha(periodosQa, f.fecha_ingresado) : null }))
+        .filter((f: any) => f.qaMes && f.qaMes.year === data.year && f.qaMes.month >= inicioMes && f.qaMes.month < inicioMes + 3),
+    );
 
     // Misma función que el panel: excluye notas vacías.
     const prom = promedioQa(filas.map((f) => f.nota_final));
@@ -576,6 +574,11 @@ export const detalleQa = createServerFn({ method: "POST" })
       filas: filas.map((f) => ({
         id: f.id,
         fecha: f.fecha_ingresado,
+        fechaMonitoreo: f.fecha_monitoreo,
+        mes: f.qaMes.month,
+        nota: f.nota_final,
+        tendencia: f.tendencia,
+        bloqueado: typeof f.nota_final === "number" && f.nota_final < QA_BLOQUEO,
         clase: f.clave,
         syllabus: f.quality_type,
         level: f.level,
