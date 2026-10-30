@@ -9,6 +9,7 @@ type Fila = {
   period_month: string;
   syllabus: string | null;
   class_id: string | null;
+  horario?: string | null;
   experience_comment: string | null;
   coach_comment: string | null;
   coach_score: number | null;
@@ -142,7 +143,7 @@ function FilaComentario({ fila, acento }: { fila: Fila; acento: string }) {
         <p className="text-[14px] leading-snug text-foreground">{fila.coach_comment ?? <span className="text-muted-foreground">No coach comment</span>}</p>
         {fila.experience_comment && <p className="mt-1 text-[13px] leading-snug text-muted-foreground">Experience: {fila.experience_comment}</p>}
         <p className="mt-1 text-xs text-muted-foreground">
-          {ABREV[m - 1] ?? String(fila.period_month).slice(0, 7)} · {fila.syllabus ?? "—"} · Class {fila.class_id ?? "—"}
+          {ABREV[m - 1] ?? String(fila.period_month).slice(0, 7)} · {fila.syllabus ?? "—"} · {fila.horario ?? "No schedule"}
           {!fila.cuenta && <span className="ml-1 font-medium">· Not counted: {fila.razon_no_cuenta ?? "No score"}</span>}
         </p>
       </div>

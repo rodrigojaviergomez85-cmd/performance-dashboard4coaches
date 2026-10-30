@@ -480,8 +480,8 @@ export const comentariosCsat = createServerFn({ method: "POST" })
     const trimestreFin =
       inicioMes + 3 > 12 ? mesInicio(data.year + 1, 1) : mesInicio(data.year, inicioMes + 3);
     const porCoach = await filtroCsat(supabaseAdmin, coachId);
-    const opciones = await todasLasFilas<{ curso: string | null; salon: string | null }>(() =>
-      porCoach(supabaseAdmin.from("csat_respuestas").select("curso, salon"))
+    const opciones = await todasLasFilas<{ curso: string | null; horario: string | null }>(() =>
+      porCoach(supabaseAdmin.from("csat_respuestas").select("curso, horario"))
         .gte("period_month", mesInicio(data.year, inicioMes))
         .lt("period_month", trimestreFin),
     );
@@ -490,7 +490,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
       supabaseAdmin
         .from("csat_respuestas")
         .select(
-          "id, period_month, curso, salon, experiencia_comment, coach_comment, coach_score, aplica_coach, tenure_aplica, razon_no_aplica",
+          "id, period_month, curso, salon, horario, experiencia_comment, coach_comment, coach_score, aplica_coach, tenure_aplica, razon_no_aplica",
           { count: "exact" },
         ),
     )
@@ -498,7 +498,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
       .lt("period_month", fin)
       .or("experiencia_comment.not.is.null,coach_comment.not.is.null");
     if (data.syllabus) consulta = consulta.eq("curso", data.syllabus);
-    if (data.clase) consulta = consulta.eq("salon", data.clase);
+    if (data.clase) consulta = consulta.eq("horario", data.clase);
     const texto = paraIlike(data.texto ?? "");
     if (texto) consulta = consulta.or(`experiencia_comment.ilike.*${texto}*,coach_comment.ilike.*${texto}*`);
 
@@ -515,6 +515,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
         period_month: f.period_month,
         syllabus: f.curso,
         class_id: f.salon,
+        horario: f.horario && f.horario !== "0" ? f.horario : null,
         experience_comment: f.experiencia_comment,
         coach_comment: f.coach_comment,
         coach_score: f.coach_score,
@@ -527,7 +528,7 @@ export const comentariosCsat = createServerFn({ method: "POST" })
       pagina: data.pagina,
       porPagina: data.porPagina,
       syllabi: [...new Set(opciones.map((f) => f.curso).filter(Boolean) as string[])].sort(),
-      clases: [...new Set(opciones.map((f) => f.salon).filter(Boolean) as string[])].sort(),
+      clases: [...new Set(opciones.map((f) => f.horario).filter((h) => h && h !== "0") as string[])].sort(),
     };
   });
 
