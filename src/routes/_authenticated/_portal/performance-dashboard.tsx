@@ -10,6 +10,7 @@ import {
   panelDesempeno,
 } from "@/lib/performance.functions";
 import { SelectorBuscable } from "@/components/selector-buscable";
+import { ComentariosCsat } from "@/components/panel/comentarios-csat";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -177,21 +178,16 @@ function PerformanceDashboard() {
   const [coachId, setCoachId] = useState<number | null>(null);
   const [year, setYear] = useState(ahora.getUTCFullYear());
   const [quarter, setQuarter] = useState(Math.floor(ahora.getUTCMonth() / 3) + 1);
-  const [mes, setMes] = useState<number | null>(null);
   const [syllabus, setSyllabus] = useState<string | null>(null);
   const [clase, setClase] = useState<string | null>(null);
   const [vistaAnual, setVistaAnual] = useState(false);
   const [abierta, setAbierta] = useState<string | null>(null);
 
-  const [paginaCsat, setPaginaCsat] = useState(0);
-  const POR_PAGINA_CSAT = 25;
 
   // Al cambiar coach, año o trimestre, los filtros anteriores dejan de aplicar.
   useEffect(() => {
-    setMes(null);
     setSyllabus(null);
     setClase(null);
-    setPaginaCsat(0);
     setAbierta(null);
   }, [coachId, year, quarter]);
 
@@ -224,7 +220,6 @@ function PerformanceDashboard() {
     enabled: abierta === "qa",
   });
   const qa = qaConsulta.data;
-  const hayFiltrosCsat = mes !== null || syllabus !== null || clase !== null;
 
   const mesesTexto = useMemo(() => {
     const inicio = (quarter - 1) * 3;
