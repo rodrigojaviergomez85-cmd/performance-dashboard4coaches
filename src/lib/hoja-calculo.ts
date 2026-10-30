@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { NIVELES_RETENCION, type NivelRetencion } from "@/lib/reglas";
 
 /** Encabezado comparable: sin acentos, sin espacios extra, en minúsculas. */
 export const claveEncabezado = (t: string) =>
@@ -233,17 +234,32 @@ export async function leerHojaRetencion(archivo: File): Promise<Record<string, u
   const nombres = XLSX.read(datos, { type: "array", bookSheets: true }).SheetNames;
   const nombre = nombres.find((n) => claveEncabezado(n) === "coach gral");
   if (!nombre) return leerHoja(archivo, ["ID COACH", "Active Student", "RETENTION", "CLV"]);
-  const nombreClases = nombres.find((n) => claveEncabezado(n) === "xcoaches");
-  const libro = XLSX.read(datos, { type: "array", sheets: nombreClases ? [nombre, nombreClases] : [nombre] });
+  const nombreNiveles = nombres.find((n) => claveEncabezado(n) === "coach x nivel");
+  const libro = XLSX.read(datos, { type: "array", sheets: nombreNiveles ? [nombre, nombreNiveles] : [nombre] });
   const hoja = libro.Sheets[nombre]!;
-  const clases = nombreClases ? clasesPorCoach(filasNormalizadas(libro.Sheets[nombreClases]!)) : new Map();
+  const niveles = nombreNiveles ? nivelesPorCoach(filasNormalizadas(libro.Sheets[nombreNiveles]!)) : new Map();
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: null }).map((fila) => {
     const salida: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fila)) salida[claveEncabezado(k)] = v;
     const id = Number(salida["id coach"]);
-    salida["__clases"] = Number.isFinite(id) ? (clases.get(id) ?? null) : null;
+    salida["__niveles"] = Number.isFinite(id) ? (niveles.get(id) ?? null) : null;
     return salida;
   });
+}
+
+/** Hoja COACH X NIVEL (tabla ancha): DO y activos por nivel, por Id Coach; omite niveles sin activos. */
+export function nivelesPorCoach(filas: Record<string, unknown>[]): Map<number, NivelRetencion[]> {
+  const mapa = new Map<number, NivelRetencion[]>();
+  for (const f of filas) {
+    const id = Number(f["id coach"]);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    const lista = NIVELES_RETENCION.flatMap(([nivel, colDo, colAct]) => {
+      const activos = Number(f[colAct]) || 0;
+      return activos > 0 ? [{ nivel, do: Number(f[colDo]) || 0, activos }] : [];
+    });
+    mapa.set(id, [...(mapa.get(id) ?? []), ...lista]);
+  }
+  return mapa;
 }
 
 export type ClaseRetencion = { horario: string; activos: number; do: number };
