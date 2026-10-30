@@ -10,6 +10,7 @@ import {
   panelDesempeno,
 } from "@/lib/performance.functions";
 import { SelectorBuscable } from "@/components/selector-buscable";
+import { ComentariosCsat } from "@/components/panel/comentarios-csat";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -177,21 +178,16 @@ function PerformanceDashboard() {
   const [coachId, setCoachId] = useState<number | null>(null);
   const [year, setYear] = useState(ahora.getUTCFullYear());
   const [quarter, setQuarter] = useState(Math.floor(ahora.getUTCMonth() / 3) + 1);
-  const [mes, setMes] = useState<number | null>(null);
   const [syllabus, setSyllabus] = useState<string | null>(null);
   const [clase, setClase] = useState<string | null>(null);
   const [vistaAnual, setVistaAnual] = useState(false);
   const [abierta, setAbierta] = useState<string | null>(null);
 
-  const [paginaCsat, setPaginaCsat] = useState(0);
-  const POR_PAGINA_CSAT = 25;
 
   // Al cambiar coach, año o trimestre, los filtros anteriores dejan de aplicar.
   useEffect(() => {
-    setMes(null);
     setSyllabus(null);
     setClase(null);
-    setPaginaCsat(0);
     setAbierta(null);
   }, [coachId, year, quarter]);
 
@@ -201,10 +197,20 @@ function PerformanceDashboard() {
     queryKey: ["panel", coachId, year, quarter],
     queryFn: () => panel({ data: argumentos }),
   });
+  // Trae todos los comentarios del trimestre (en páginas de 100) para que pestañas y resúmenes usen la misma población.
   const csatConsulta = useQuery({
-    queryKey: ["csat", coachId, year, quarter, mes, syllabus, clase, paginaCsat],
-    queryFn: () =>
-      comentarios({ data: { ...argumentos, mes, syllabus, clase, texto: null, pagina: paginaCsat, porPagina: POR_PAGINA_CSAT } }),
+    queryKey: ["csat-todo", coachId, year, quarter, syllabus, clase],
+    queryFn: async () => {
+      const filas: any[] = [];
+      let primera: any = null;
+      for (let pagina = 0; pagina < 200; pagina++) {
+        const r = await comentarios({ data: { ...argumentos, mes: null, syllabus, clase, texto: null, pagina, porPagina: 100 } });
+        primera ??= r;
+        filas.push(...r.filas);
+        if ((pagina + 1) * 100 >= r.total || !r.filas.length) break;
+      }
+      return { ...primera, filas };
+    },
     placeholderData: (previo) => previo,
   });
   const csat = csatConsulta.data;
@@ -214,7 +220,6 @@ function PerformanceDashboard() {
     enabled: abierta === "qa",
   });
   const qa = qaConsulta.data;
-  const hayFiltrosCsat = mes !== null || syllabus !== null || clase !== null;
 
   const mesesTexto = useMemo(() => {
     const inicio = (quarter - 1) * 3;
@@ -362,38 +367,26 @@ function PerformanceDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
-            <h2 className="text-sm font-bold text-foreground">CSAT Comments</h2>
-            <p className="text-[10px] text-muted-foreground">What parents & students are saying — every CSAT survey this quarter</p>
-          </div>
-          <div className="rounded-md border border-border bg-card p-3 shadow-sm">
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Select value={mes === null ? "all" : String(mes)} onValueChange={(valor) => { setMes(valor === "all" ? null : Number(valor)); setPaginaCsat(0); }}>
-                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All months</SelectItem>{data.meses.map((item) => <SelectItem key={item.mes} value={String(item.mes)}>{item.etiqueta}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={syllabus ?? "all"} onValueChange={(valor) => { setSyllabus(valor === "all" ? null : valor); setPaginaCsat(0); }}>
-                <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All syllabuses" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={clase ?? "all"} onValueChange={(valor) => { setClase(valor === "all" ? null : valor); setPaginaCsat(0); }}>
-                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="All classes" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All classes</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
-              </Select>
-              <div className="flex h-8 items-center rounded-md border border-border px-3 text-[11px] text-foreground">{csat?.total ? `Showing ${paginaCsat * POR_PAGINA_CSAT + 1}–${paginaCsat * POR_PAGINA_CSAT + csat.filas.length} of ${csat.total} records` : "0 records"}</div>
-              <div className="ml-auto flex gap-2">
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={paginaCsat === 0} onClick={() => setPaginaCsat((p) => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={!csat || (paginaCsat + 1) * POR_PAGINA_CSAT >= csat.total} onClick={() => setPaginaCsat((p) => p + 1)}>Next</Button>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[850px] text-[11px]">
-                <TableHeader><TableRow className="bg-muted/70"><TableHead>Month</TableHead><TableHead>Syllabus</TableHead><TableHead>Class ID</TableHead><TableHead>Experience Comment</TableHead><TableHead>Coach Score</TableHead><TableHead>Coach Comment</TableHead><TableHead>Counts?</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader>
-                <TableBody>{(csat?.filas ?? []).length ? (csat?.filas ?? []).map((fila: any) => <TableRow key={fila.id}><TableCell>{String(fila.period_month).slice(0, 7)}</TableCell><TableCell>{fila.syllabus ?? "—"}</TableCell><TableCell>{fila.class_id ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.experience_comment ?? "—"}</TableCell><TableCell>{fila.coach_score ?? "—"}</TableCell><TableCell className="max-w-64 whitespace-normal">{fila.coach_comment ?? "—"}</TableCell><TableCell>{fila.cuenta ? "Yes" : "No"}</TableCell><TableCell>{fila.cuenta ? "—" : fila.razon_no_cuenta ?? "No score"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={8} className="h-14 text-center text-muted-foreground">{csatConsulta.isError ? <span className="text-destructive">Could not load comments. <Button variant="link" size="sm" onClick={() => csatConsulta.refetch()}>Retry</Button></span> : csatConsulta.isLoading ? "Loading…" : hayFiltrosCsat ? "No comments match these filters." : "No comments this quarter."}</TableCell></TableRow>}</TableBody>
-              </Table>
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Rows marked “No” do not count toward CSAT — the reason is shown.</p>
-          </div>
+          <ComentariosCsat
+            key={`${coachId}-${year}-${quarter}`}
+            filas={csat?.filas ?? []}
+            quarter={quarter}
+            cargando={csatConsulta.isLoading || csatConsulta.isFetching}
+            error={csatConsulta.isError}
+            reintentar={() => csatConsulta.refetch()}
+            filtros={
+              <>
+                <Select value={syllabus ?? "all"} onValueChange={(valor) => setSyllabus(valor === "all" ? null : valor)}>
+                  <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All syllabuses" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={clase ?? "all"} onValueChange={(valor) => setClase(valor === "all" ? null : valor)}>
+                  <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="All classes" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All classes</SelectItem>{(csat?.clases ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+                </Select>
+              </>
+            }
+          />
 
             </div>
           )}

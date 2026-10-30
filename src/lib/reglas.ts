@@ -295,3 +295,29 @@ export function esLlegadaTarde(categoria: unknown): boolean {
 export function contarLlegadasTarde(filas: { fecha: string; otros_motivos: string | null }[], desde: string, hasta: string): number {
   return filas.filter((f) => f.fecha >= desde && f.fecha < hasta && esLlegadaTarde(f.otros_motivos)).length;
 }
+
+/** Comentarios CSAT (vista desplegada): Coach Score <= 8 es detractor, >= 9 positivo. */
+export type GrupoComentario = "detractor" | "positivo";
+export function grupoComentarioCsat(score: number | null | undefined): GrupoComentario | null {
+  if (score === null || score === undefined || !Number.isFinite(score)) return null;
+  return score <= 8 ? "detractor" : "positivo";
+}
+
+/** Tono visual del badge: 1–6 rojo, 7–8 ámbar (siguen siendo detractores), 9–10 verde. */
+export function tonoNotaCsat(score: number | null | undefined): "rojo" | "ambar" | "verde" | null {
+  const g = grupoComentarioCsat(score);
+  if (!g) return null;
+  if (g === "positivo") return "verde";
+  return (score as number) <= 6 ? "rojo" : "ambar";
+}
+
+/** Orden: nota ascendente; con la misma nota, el más reciente primero; sin nota al final. */
+export function ordenarComentariosCsat<T extends { coach_score: number | null; period_month: string; id: number | string }>(filas: T[]): T[] {
+  return [...filas].sort((a, b) => {
+    const sa = a.coach_score ?? Infinity;
+    const sb = b.coach_score ?? Infinity;
+    if (sa !== sb) return sa - sb;
+    if (a.period_month !== b.period_month) return a.period_month < b.period_month ? 1 : -1;
+    return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+  });
+}

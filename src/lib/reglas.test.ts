@@ -207,3 +207,23 @@ describe("lateness desde incidencias", () => {
     expect(contarLlegadasTarde(filas, "2026-10-01", "2026-11-01")).toBe(1);
   });
 });
+
+import { grupoComentarioCsat, ordenarComentariosCsat, tonoNotaCsat } from "./reglas";
+
+describe("comentarios CSAT", () => {
+  it("8 es detractor", () => expect(grupoComentarioCsat(8)).toBe("detractor"));
+  it("9 es positivo", () => expect(grupoComentarioCsat(9)).toBe("positivo"));
+  it("6 rojo, 7 ámbar, 10 verde", () => {
+    expect(tonoNotaCsat(6)).toBe("rojo");
+    expect(tonoNotaCsat(7)).toBe("ambar");
+    expect(tonoNotaCsat(10)).toBe("verde");
+  });
+  it("ordena de menor a mayor y reciente primero", () => {
+    const r = ordenarComentariosCsat([
+      { id: 1, coach_score: 9, period_month: "2026-07-01" },
+      { id: 2, coach_score: 3, period_month: "2026-07-01" },
+      { id: 3, coach_score: 3, period_month: "2026-09-01" },
+    ]);
+    expect(r.map((f) => f.id)).toEqual([3, 2, 1]);
+  });
+});
