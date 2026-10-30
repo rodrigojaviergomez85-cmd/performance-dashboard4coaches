@@ -191,3 +191,19 @@ describe("hires", () => {
     expect(estadoCr2m(30)).toBe("verde");
   });
 });
+
+import { contarLlegadasTarde } from "./reglas";
+describe("lateness desde incidencias", () => {
+  const filas = [
+    { fecha: "2026-09-16", otros_motivos: "LLEGADA TARDE" },
+    { fecha: "2026-09-16", otros_motivos: "Llegada  tarde" },
+    { fecha: "2026-10-06", otros_motivos: "LLEGADA TARDE" },
+    { fecha: "2026-10-08", otros_motivos: "PERMISO PERSONAL AUTORIZADO" },
+  ];
+  it("cuenta cada evento, aunque sean el mismo día", () => {
+    expect(contarLlegadasTarde(filas, "2026-09-01", "2026-10-01")).toBe(2);
+  });
+  it("ignora otras categorías y fechas fuera del rango", () => {
+    expect(contarLlegadasTarde(filas, "2026-10-01", "2026-11-01")).toBe(1);
+  });
+});
