@@ -334,3 +334,29 @@ export function tendenciasQa<T extends { id: number | string; fecha_monitoreo: s
     return { ...f, tendencia };
   });
 }
+
+/** Niveles de COACH X NIVEL en orden académico: [etiqueta, columna DO, columna activos]. */
+export const NIVELES_RETENCION: [string, string, string][] = [
+  ["B0", "b0", "a b0"], ["B1", "b1", "a b1"], ["B2", "b2", "a b2"], ["B3", "b3", "a b3"], ["B4", "b4", "a b4"],
+  ["B4 Review", "b4 r", "a b4r"], ["INT", "int", "a int"], ["ADV", "adv", "a adv"], ["Master", "master", "a master"],
+];
+export type NivelRetencion = { nivel: string; do: number; activos: number };
+
+/**
+ * Retention por nivel = 1 − ΣDO / ΣActivos (misma relación que COACH X NIVEL). Combina todos los meses
+ * recibidos (Q Total no promedia porcentajes) y omite niveles sin activos.
+ */
+export function retencionPorNivel(meses: (NivelRetencion[] | null | undefined)[]) {
+  const suma = new Map<string, { do: number; activos: number }>();
+  for (const lista of meses) for (const n of lista ?? []) {
+    const s = suma.get(n.nivel) ?? { do: 0, activos: 0 };
+    s.do += Number(n.do) || 0;
+    s.activos += Number(n.activos) || 0;
+    suma.set(n.nivel, s);
+  }
+  return NIVELES_RETENCION.flatMap(([nivel]) => {
+    const s = suma.get(nivel);
+    if (!s || s.activos <= 0) return [];
+    return [{ nivel, retencion: Math.max(0, (1 - s.do / s.activos) * 100) }];
+  });
+}
