@@ -223,10 +223,11 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       fc_do: number | null;
       clv: number | null;
       category: string | null;
+      clases: { horario: string; activos: number; do: number }[] | null;
     }>(() =>
       supabaseAdmin
         .from("retencion")
-        .select("id, period_month, do_count, active_students, do_pct, retention_pct, fc_do, clv, category")
+        .select("id, period_month, do_count, active_students, do_pct, retention_pct, fc_do, clv, category, clases")
         .eq("coach_id", coachId)
         .gte("period_month", inicio)
         .lt("period_month", finReal),
@@ -323,6 +324,14 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         clv: r?.clv == null ? null : Number(r.clv),
         categoria: r?.category ?? null,
       };
+    });
+    // Retention by Class (hoja XCOACHES): retención por horario = 1 − DO / activos promedio. Solo detalle visual.
+    const retClases = retMeses.flatMap(({ mes, etiqueta }) => {
+      const r = retencion.find((x) => mesDe(x.period_month) === mes);
+      return (Array.isArray(r?.clases) ? r.clases : [])
+        .filter((c) => Number(c.activos) > 0)
+        .map((c) => ({ mes, etiqueta, horario: c.horario, retencion: Math.max(0, (1 - Number(c.do) / Number(c.activos)) * 100) }))
+        .sort((a, b) => a.horario.localeCompare(b.horario));
     });
     const rt = retencionTrimestre(
       retencion.map((x) => ({
