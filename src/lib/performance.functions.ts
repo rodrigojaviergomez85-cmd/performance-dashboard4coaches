@@ -185,10 +185,11 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       return m.year === data.year ? m.month : 0;
     };
 
-    const abs = await todasLasFilas<{ fecha: string }>(() =>
+    const abs = await todasLasFilas<{ id: number; fecha: string; motivo: string | null; otros_motivos: string | null; otros_motivos_2: string | null }>(() =>
       supabaseAdmin
         .from("incidencias")
-        .select("fecha")
+        .select("id, fecha, motivo, otros_motivos, otros_motivos_2")
+        .order("id", { ascending: true })
         .eq("coach_id", coachId)
         .eq("applicable", 1)
         .gte("fecha", mesInicio(data.year, 1))
@@ -312,6 +313,14 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         ...resumenIncidencias(abs.filter((a) => mesDe(a.fecha) === mes).map((a) => a.fecha)),
       };
     });
+    // Detalle visual: un evento por fila del archivo, con el tipo real de incidencia.
+    const incDetalle = abs
+      .filter((a) => enRango(a.fecha))
+      .map((a) => ({
+        fecha: a.fecha,
+        mes: mesDe(a.fecha),
+        tipo: (a.otros_motivos?.trim() || a.otros_motivos_2?.trim() || a.motivo?.trim() || "SIN TIPO").toUpperCase(),
+      }));
     const incTotal = resumenIncidencias(abs.filter((a) => enRango(a.fecha)).map((a) => a.fecha));
 
     // Retention: cada mes muestra los valores de COACH GRAL tal cual; el trimestre se recalcula sobre la población combinada.
@@ -405,6 +414,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       qaTotal,
       incMeses,
       incTotal,
+      incDetalle,
       retMeses,
       retTotal,
       retNiveles,
