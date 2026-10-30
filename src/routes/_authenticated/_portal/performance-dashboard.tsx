@@ -377,8 +377,8 @@ function PerformanceDashboard() {
             filtros={
               <>
                 <Select value={syllabus ?? "all"} onValueChange={(valor) => setSyllabus(valor === "all" ? null : valor)}>
-                  <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All syllabuses" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All syllabuses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="All courses" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All courses</SelectItem>{(csat?.syllabi ?? []).map((valor: string) => <SelectItem key={valor} value={valor}>{valor}</SelectItem>)}</SelectContent>
                 </Select>
                 <Select value={clase ?? "all"} onValueChange={(valor) => setClase(valor === "all" ? null : valor)}>
                   <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="All schedules" /></SelectTrigger>
