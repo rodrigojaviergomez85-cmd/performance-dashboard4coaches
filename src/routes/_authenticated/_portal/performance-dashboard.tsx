@@ -540,7 +540,7 @@ function DetalleQa({ quarter, consulta }: { quarter: number; consulta: any }) {
             : consulta.isError ? <TableRow><TableCell colSpan={cols} className="h-12 text-center text-destructive">Could not load QA details. <Button variant="link" size="sm" onClick={() => consulta.refetch()}>Retry</Button></TableCell></TableRow>
             : !visibles.length ? <TableRow><TableCell colSpan={cols} className="h-12 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground">No QA evaluations</TableCell></TableRow>
             : visibles.map((f) => {
-              const tono = f.nota == null ? "bg-muted text-muted-foreground" : f.bloqueado ? "bg-bad/15 text-bad" : f.frase === "ALMOST THERE" ? "bg-great/25 text-great-text" : "bg-status-ok text-status-ok-foreground";
+              const tono = f.nota == null ? "bg-muted text-muted-foreground" : f.frase === "Almost There" ? "bg-great/25 text-great-text" : f.bloqueado ? "bg-bad/15 text-bad" : "bg-status-ok text-status-ok-foreground";
               const t = f.tendencia;
               return (
                 <TableRow key={f.id}>
