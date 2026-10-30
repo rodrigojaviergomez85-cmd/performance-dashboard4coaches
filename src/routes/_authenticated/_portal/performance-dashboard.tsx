@@ -451,7 +451,6 @@ function PerformanceDashboard() {
           {abierta === "inc" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
             <h2 className="text-sm font-bold text-foreground">Incidencias — Q{quarter} {year}</h2>
-            <p className="text-[10px] text-muted-foreground">Unique days and weeks with incidences · limit is 3 days per quarter</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[...(data.incMeses ?? []).map((m) => ({ ...m, total: false })), ...(data.incTotal ? [{ ...data.incTotal, mes: 0, etiqueta: `Q${quarter} Total`, total: true }] : [])].map((m) => (
@@ -463,6 +462,7 @@ function PerformanceDashboard() {
             ))}
           </div>
 
+            <DetalleIncidencias quarter={quarter} eventos={data.incDetalle ?? []} />
           </div>}
           {abierta === "ret" && <div className="scorecard-detail">
           <h2 className="pt-1 text-sm font-bold text-foreground">Retention Results</h2>
@@ -543,6 +543,61 @@ const fechaLegible = (f: string | null) => {
   const [y, m, d] = f.slice(0, 10).split("-");
   return `${MESES_EN[Number(m) - 1]} ${d}, ${y}`;
 };
+
+function DetalleIncidencias({ quarter, eventos }: { quarter: number; eventos: { fecha: string; mes: number; tipo: string }[] }) {
+  const [tab, setTab] = useState(0);
+  const [tipo, setTipo] = useState("__all");
+  const meses = [1, 2, 3].map((i) => (quarter - 1) * 3 + i);
+  const tipos = [...new Set(eventos.map((e) => e.tipo))].sort();
+  const filtrados = tipo === "__all" ? eventos : eventos.filter((e) => e.tipo === tipo);
+  const dias = (xs: typeof eventos) => new Set(xs.map((e) => e.fecha)).size;
+  const tabs = [...meses.map((m) => ({ clave: m, etiqueta: ABREV_QA[m - 1], n: dias(filtrados.filter((e) => e.mes === m)) })), { clave: 0, etiqueta: "Q TOTAL", n: dias(filtrados) }];
+  const visibles = tab === 0 ? filtrados : filtrados.filter((e) => e.mes === tab);
+  const porFecha = new Map<string, Map<string, number>>();
+  for (const e of visibles) {
+    const m = porFecha.get(e.fecha) ?? new Map<string, number>();
+    m.set(e.tipo, (m.get(e.tipo) ?? 0) + 1);
+    porFecha.set(e.fecha, m);
+  }
+  const filas = [...porFecha.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div role="tablist" className="flex w-fit flex-wrap gap-1 rounded-md bg-scorecard-total p-1">
+          {tabs.map((t) => (
+            <button key={t.clave} role="tab" aria-selected={tab === t.clave} onClick={() => setTab(t.clave)}
+              className={cn("rounded px-3 py-1.5 text-[13px] font-semibold tabular-nums transition-colors", tab === t.clave ? "bg-scorecard-brand text-primary-foreground shadow-sm" : "text-scorecard-brand hover:bg-card")}>
+              {t.etiqueta} ({t.n})
+            </button>
+          ))}
+        </div>
+        <select aria-label="Incidence type" value={tipo} onChange={(e) => setTipo(e.target.value)}
+          className="h-8 rounded-md border border-border bg-card px-2 text-[12px] font-semibold uppercase text-foreground">
+          <option value="__all">All incidence types</option>
+          {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <Table className="text-[14px]">
+          <TableHeader><TableRow className="bg-muted/60 [&>th]:text-[13px] [&>th]:font-semibold">
+            <TableHead className="w-40">Date</TableHead><TableHead>Incidence Type</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {!filas.length ? <TableRow><TableCell colSpan={2} className="h-12 text-center text-sm font-semibold uppercase tracking-wide text-muted-foreground">No incidences</TableCell></TableRow>
+            : filas.map(([fecha, ts]) => (
+              <TableRow key={fecha}>
+                <TableCell className="whitespace-nowrap align-top">{fechaLegible(fecha)}</TableCell>
+                <TableCell><div className="flex flex-wrap gap-1">{[...ts.entries()].map(([t, n]) => (
+                  <span key={t} className="rounded bg-muted px-2 py-0.5 text-[12px] font-semibold uppercase text-foreground">{t}{n > 1 ? ` ×${n}` : ""}</span>
+                ))}</div></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 function DetalleQa({ quarter, consulta }: { quarter: number; consulta: any }) {
   const [tab, setTab] = useState(0);
