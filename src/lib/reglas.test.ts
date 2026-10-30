@@ -239,3 +239,17 @@ describe("tendenciasQa", () => {
     expect(r.map((f) => f.tendencia)).toEqual([null, 0.5, -1]);
   });
 });
+
+import { retencionPorNivel } from "./reglas";
+describe("retencionPorNivel", () => {
+  it("calcula 1 − DO/activos y omite niveles sin activos (Fredy, octubre)", () => {
+    const r = retencionPorNivel([[{ nivel: "B0", do: 4, activos: 15 }, { nivel: "B1", do: 1, activos: 0 }, { nivel: "INT", do: 14, activos: 68.25 }]]);
+    expect(r.map((x) => x.nivel)).toEqual(["B0", "INT"]);
+    expect(Math.round(r[0]!.retencion)).toBe(73);
+    expect(Math.round(r[1]!.retencion)).toBe(79);
+  });
+  it("Q Total suma DO y activos, no promedia porcentajes", () => {
+    const r = retencionPorNivel([[{ nivel: "INT", do: 6, activos: 49.25 }], [{ nivel: "INT", do: 14, activos: 68.25 }]]);
+    expect(r[0]!.retencion).toBeCloseTo((1 - 20 / 117.5) * 100, 6);
+  });
+});

@@ -123,6 +123,44 @@ function tonoEstado(estado: string | null, tono?: string) {
   return "verde";
 }
 
+function RetencionPorNivel({ datos, quarter }: { datos: { meses: { mes: number; etiqueta: string; niveles: { nivel: string; retencion: number }[] }[]; total: { nivel: string; retencion: number }[] } | undefined; quarter: number }) {
+  const [pestana, setPestana] = useState<number>(0);
+  if (!datos) return null;
+  const pestanas = [...datos.meses.map((m) => ({ clave: m.mes, etiqueta: m.etiqueta, niveles: m.niveles })), { clave: 0, etiqueta: "Q Total", niveles: datos.total }];
+  const actual = pestanas.find((p) => p.clave === pestana) ?? pestanas[pestanas.length - 1]!;
+  const tono = (r: number) => (r < 80 ? "border-bad bg-bad/15 text-bad" : r < 90 ? "border-great bg-great/20 text-great-text" : "border-superstar bg-superstar/15 text-superstar");
+  return (
+    <div className="space-y-2 pt-2">
+      <div className="flex flex-wrap gap-1" role="tablist" aria-label={`Retention by level Q${quarter}`}>
+        {pestanas.map((p) => (
+          <button key={p.clave} type="button" role="tab" aria-selected={p.clave === actual.clave} onClick={() => setPestana(p.clave)}
+            className={cn("rounded-md border px-3 py-1 text-xs font-semibold uppercase transition-colors", p.clave === actual.clave ? (p.clave === 0 ? "border-scorecard-brand bg-scorecard-total text-foreground" : "border-primary bg-primary text-primary-foreground") : "border-border bg-card text-muted-foreground hover:bg-muted")}>
+            {p.etiqueta}
+          </button>
+        ))}
+      </div>
+      <h3 className="text-sm font-bold text-foreground">Retention by Level</h3>
+      {actual.niveles.length === 0 ? (
+        <p className="rounded-md border border-border bg-muted/40 py-4 text-center text-sm font-semibold uppercase text-muted-foreground">No data</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-border">
+          <Table className="text-sm">
+            <TableHeader><TableRow className="bg-muted/60"><TableHead className="text-[13px] font-semibold uppercase">Level</TableHead><TableHead className="text-right text-[13px] font-semibold uppercase">Retention</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {actual.niveles.map((n) => (
+                <TableRow key={n.nivel}>
+                  <TableCell className="py-1.5 text-[14px] font-medium">{n.nivel}</TableCell>
+                  <TableCell className="py-1.5 text-right"><span className={cn("rounded-full border px-2.5 py-0.5 text-[13px] font-bold tabular-nums", tono(n.retencion))}>{Math.round(n.retencion)}%</span></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResumenScorecard({ filas, abierta, alAbrir, quarter }: { filas: FilaResumen[]; abierta: string | null; alAbrir: (clave: string) => void; quarter: number }) {
   const etiquetas = filas.find((f) => f.meses.length)?.meses.map((m) => m.etiqueta) ?? [];
   return (
@@ -427,25 +465,19 @@ function PerformanceDashboard() {
 
           </div>}
           {abierta === "ret" && <div className="scorecard-detail">
-          <h2 className="pt-1 text-lg font-bold text-foreground">Retention by Class</h2>
-          {(data.retClases ?? []).length === 0 ? (
-            <p className="rounded-md border border-border bg-muted/40 py-4 text-center text-sm font-semibold uppercase text-muted-foreground">No data</p>
-          ) : (
-            <div className="overflow-x-auto rounded-md border border-border">
-              <Table className="text-sm">
-                <TableHeader><TableRow className="bg-muted/60"><TableHead className="text-[13px] font-semibold uppercase">Month</TableHead><TableHead className="text-[13px] font-semibold uppercase">Schedule</TableHead><TableHead className="text-right text-[13px] font-semibold uppercase">Retention %</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {(data.retClases ?? []).map((c: any) => (
-                    <TableRow key={`${c.mes}-${c.horario}`}>
-                      <TableCell className="py-1.5 text-[14px] uppercase">{c.etiqueta}</TableCell>
-                      <TableCell className="py-1.5 text-[14px] tabular-nums">{c.horario}</TableCell>
-                      <TableCell className="py-1.5 text-right text-[15px] font-semibold tabular-nums">{Math.round(c.retencion)}%</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <h2 className="pt-1 text-sm font-bold text-foreground">Retention Results</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[...(data.retMeses ?? []).map((m: any) => ({ ...m, total: false, valor: m.retencion === null ? "—" : `${Math.round(m.retencion)}%`, sub: m.retencion === null ? "No data" : `DO ${m.doPct === null ? "—" : `${Math.round(m.doPct)}%`} · CLV ${m.clv ?? "—"}` })),
+              { mes: 0, etiqueta: `Q${quarter} Total`, total: true, retencion: data.retTotal?.retencion ?? null, categoria: data.retTotal?.categoria ?? null, valor: data.retTotal?.retencion == null ? "—" : `${data.retTotal.retencion.toFixed(2)}%`, sub: data.retTotal?.retencion == null ? "No data" : `DO ${data.retTotal.doPct === null ? "—" : `${data.retTotal.doPct.toFixed(2)}%`} · CLV ${data.retTotal.clv ?? "—"}` }].map((m: any) => (
+              <div key={m.mes} className={cn("scorecard-month-card", m.total && "border-scorecard-brand bg-scorecard-total", m.retencion === null ? "scorecard-empty" : m.categoria === "BAD" ? "scorecard-bad" : "scorecard-great")}>
+                <p className="scorecard-label">{m.etiqueta}</p>
+                <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{m.valor}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase text-scorecard-status">{m.retencion === null ? "No data" : m.categoria ?? ""}</p>
+                <p className="mt-3 text-[10px] text-muted-foreground">{m.sub}</p>
+              </div>
+            ))}
+          </div>
+          <RetencionPorNivel key={`${coachId}-${year}-${quarter}`} datos={data.retNiveles} quarter={quarter} />
           </div>}
           {abierta === "hires" && <div className="scorecard-detail">
           <div className="flex flex-wrap items-end justify-between gap-2 pt-1">
