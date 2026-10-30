@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/_admin/academic-performanc
   component: AcademicPerformance,
 });
 
-const PESTANAS = ["qa", "dsat", "nl", "retention", "hires", "abs", "lateness"] as const;
+const PESTANAS = ["qa", "dsat", "nl", "retention", "hires", "abs"] as const;
 const ETIQUETAS: Record<(typeof PESTANAS)[number], string> = {
   qa: "QA",
   dsat: "DSAT",
@@ -34,7 +34,6 @@ const ETIQUETAS: Record<(typeof PESTANAS)[number], string> = {
   retention: "Retention",
   hires: "Hires",
   abs: "Abs",
-  lateness: "Lateness",
 };
 
 function AcademicPerformance() {

@@ -19,6 +19,7 @@ import {
   retencionTrimestre,
   resumenHires,
   estadoCr2m,
+  contarLlegadasTarde,
 } from "@/lib/reglas";
 
 /**
@@ -201,13 +202,16 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         .lt("fecha", mesInicio(data.year + 1, 1)),
     );
 
-    const tardanzas = await todasLasFilas<{ fecha: string; late_count: number }>(() =>
+    // Lateness: eventos LLEGADA TARDE del archivo de incidencias (independiente del conteo de Incidencias).
+    const tardanzas = await todasLasFilas<{ fecha: string; otros_motivos: string | null }>(() =>
       supabaseAdmin
-        .from("lateness")
-        .select("fecha, late_count")
-        .eq("teacher_id", coachId)
-        .gte("fecha", inicioPrevio)
-        .lt("fecha", finReal),
+        .from("incidencias")
+        .select("id, fecha, otros_motivos")
+        .eq("coach_id", coachId)
+        .eq("applicable", 1)
+        .ilike("otros_motivos", "%llegada%tarde%")
+        .gte("fecha", inicioPrevio < mesInicio(data.year, 1) ? inicioPrevio : mesInicio(data.year, 1))
+        .lt("fecha", mesInicio(data.year + 1, 1)),
     );
 
     const retencion = await todasLasFilas<{
@@ -345,12 +349,8 @@ export const panelDesempeno = createServerFn({ method: "POST" })
     const aprobadas = nlTrimestre.filter((n) => n.resultado === "Approved").length;
     const nlPorcentaje = evaluadas === 0 ? null : redondear2((aprobadas * 100) / evaluadas);
 
-    const sumaTardanzas = tardanzas
-      .filter((t) => enRango(t.fecha))
-      .reduce((a, t) => a + (t.late_count ?? 0), 0);
-    const tardanzasPrevias = tardanzas
-      .filter((t) => t.fecha >= inicioPrevio && t.fecha < inicio)
-      .reduce((a, t) => a + (t.late_count ?? 0), 0);
+    const sumaTardanzas = contarLlegadasTarde(tardanzas, inicio, finReal);
+    const tardanzasPrevias = contarLlegadasTarde(tardanzas, inicioPrevio, inicio);
 
     const anual = Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1;
@@ -367,9 +367,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
         qaFrase: fraseQa(q),
         qaRango: rangoQa(q),
         incidencias: new Set(abs.filter((a) => mesDe(a.fecha) === mes).map((a) => a.fecha)).size,
-        tardanzas: tardanzas
-          .filter((t) => mesDe(t.fecha) === mes && t.fecha.startsWith(String(data.year)))
-          .reduce((a, t) => a + (t.late_count ?? 0), 0),
+        tardanzas: contarLlegadasTarde(tardanzas, mesInicio(data.year, mes), mes === 12 ? mesInicio(data.year + 1, 1) : mesInicio(data.year, mes + 1)),
         nl: ev === 0 ? null : redondear2((ap * 100) / ev),
       };
     });

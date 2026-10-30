@@ -286,3 +286,12 @@ export function estadoCr2m(cr2m: number | null): "rojo" | "amarillo" | "verde" |
   if (cr2m >= 15) return "amarillo";
   return "rojo";
 }
+
+/** Lateness: cada fila de incidencias con categoría LLEGADA TARDE es un evento (varias el mismo día cuentan aparte). */
+export function esLlegadaTarde(categoria: unknown): boolean {
+  return normalizarCategoria(categoria) === "LLEGADA TARDE";
+}
+
+export function contarLlegadasTarde(filas: { fecha: string; otros_motivos: string | null }[], desde: string, hasta: string): number {
+  return filas.filter((f) => f.fecha >= desde && f.fecha < hasta && esLlegadaTarde(f.otros_motivos)).length;
+}
