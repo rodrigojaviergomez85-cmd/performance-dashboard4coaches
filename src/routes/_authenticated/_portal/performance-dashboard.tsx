@@ -506,7 +506,7 @@ function PerformanceDashboard() {
               </div>
             ))}
           </div>
-
+          <DetalleHires key={`${coachId}-${year}-${quarter}`} quarter={quarter} total={data.hiresTotal?.hires ?? 0} filas={data.hiresDetalle ?? []} />
           </div>}
 
           <div className="scorecard-alert-card">
@@ -543,6 +543,51 @@ const fechaLegible = (f: string | null) => {
   const [y, m, d] = f.slice(0, 10).split("-");
   return `${MESES_EN[Number(m) - 1]} ${d}, ${y}`;
 };
+
+function DetalleHires({ quarter, total, filas }: { quarter: number; total: number; filas: { mes: number; student_id: number; fecha: string | null; trainee: string | null }[] }) {
+  const [tab, setTab] = useState(0);
+  const meses = [1, 2, 3].map((i) => (quarter - 1) * 3 + i);
+  const unicos = (xs: typeof filas) => new Set(xs.map((f) => f.student_id)).size;
+  const tabs = [...meses.map((m) => ({ clave: m, etiqueta: ABREV_QA[m - 1], n: unicos(filas.filter((f) => f.mes === m)) })), { clave: 0, etiqueta: "Q TOTAL", n: total }];
+  const visibles = tab === 0 ? filas.filter((f, i) => filas.findIndex((g) => g.student_id === f.student_id) === i) : filas.filter((f) => f.mes === tab);
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <div className="rounded-md border border-border border-l-4 border-l-scorecard-brand bg-scorecard-total px-4 py-3">
+        {total > 0 ? (
+          <p className="text-base font-bold text-foreground">You changed <span className="text-accent tabular-nums">{total}</span> {total === 1 ? "life" : "lives"}.</p>
+        ) : (
+          <p className="text-base font-bold text-foreground">Keep going, Coach.</p>
+        )}
+        <p className="text-[12px] text-muted-foreground">{total > 0 ? "Thank you, Coach, for helping change futures, one hire at a time." : "Every effort brings you closer to changing a life."}</p>
+      </div>
+      <div role="tablist" className="flex w-fit flex-wrap gap-1 rounded-md bg-scorecard-total p-1">
+        {tabs.map((t) => (
+          <button key={t.clave} role="tab" aria-selected={tab === t.clave} onClick={() => setTab(t.clave)}
+            className={cn("rounded px-3 py-1.5 text-[13px] font-semibold tabular-nums transition-colors", tab === t.clave ? "bg-scorecard-brand text-primary-foreground shadow-sm" : "text-scorecard-brand hover:bg-card")}>
+            {t.etiqueta} ({t.n})
+          </button>
+        ))}
+      </div>
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
+        <Table className="text-[14px]">
+          <TableHeader><TableRow className="bg-muted/60 [&>th]:text-[13px] [&>th]:font-semibold">
+            <TableHead className="w-40">Hire Date</TableHead><TableHead>Trainee</TableHead><TableHead className="w-24">Level</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {!visibles.length ? <TableRow><TableCell colSpan={3} className="h-12 text-center text-sm text-muted-foreground">No hires recorded for this period.</TableCell></TableRow>
+            : visibles.map((f) => (
+              <TableRow key={`${f.mes}-${f.student_id}`}>
+                <TableCell className="whitespace-nowrap">{fechaLegible(f.fecha)}</TableCell>
+                <TableCell>{f.trainee ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">—</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 function DetalleIncidencias({ quarter, eventos }: { quarter: number; eventos: { fecha: string; mes: number; tipo: string }[] }) {
   const [tab, setTab] = useState(0);

@@ -238,10 +238,10 @@ export const panelDesempeno = createServerFn({ method: "POST" })
 
     const filtroH = await filtroHires(supabaseAdmin, coachId);
     const hiresFilas = (
-      await todasLasFilas<{ tipo: "hire" | "meta"; period_month: string; student_id: number | null; es_2m: boolean; meta: number | null }>(() =>
+      await todasLasFilas<{ tipo: "hire" | "meta"; period_month: string; student_id: number | null; es_2m: boolean; meta: number | null; student: string | null; fecha_reportado: string | null }>(() =>
         supabaseAdmin
           .from("hires")
-          .select("id, tipo, period_month, student_id, es_2m, meta")
+          .select("id, tipo, period_month, student_id, es_2m, meta, student, fecha_reportado")
           .gte("period_month", inicio)
           .lt("period_month", finReal)
           .or(filtroH),
@@ -361,6 +361,19 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       return { mes, etiqueta: MESES[mes - 1]!, datos: tarjetaHires(hiresFilas.filter((h) => mesDe(h.period_month) === mes)) };
     });
     const hiresTotal = tarjetaHires(hiresFilas);
+    // Detalle: un registro por estudiante y mes (misma deduplicación que los conteos), con la fecha más antigua.
+    const hiresDetalle = (() => {
+      const mapa = new Map<string, { mes: number; student_id: number; fecha: string | null; trainee: string | null }>();
+      for (const h of hiresFilas) {
+        if (h.tipo !== "hire" || h.student_id === null) continue;
+        const mes = mesDe(h.period_month);
+        const k = `${mes}-${h.student_id}`;
+        const previo = mapa.get(k);
+        const fecha = h.fecha_reportado ?? h.period_month;
+        if (!previo || (fecha && (!previo.fecha || fecha < previo.fecha))) mapa.set(k, { mes, student_id: h.student_id, fecha, trainee: h.student ?? previo?.trainee ?? null });
+      }
+      return [...mapa.values()].sort((a, b) => ((a.fecha ?? "") < (b.fecha ?? "") ? -1 : 1));
+    })();
 
     const nlTrimestre = nl.filter((n) => enRango(n.fecha));
     const evaluadas = nlTrimestre.filter((n) => (n.resultado ?? "") !== "Pending").length;
@@ -420,6 +433,7 @@ export const panelDesempeno = createServerFn({ method: "POST" })
       retNiveles,
       hiresMeses,
       hiresTotal,
+      hiresDetalle,
       qa: {
         frase: fraseQa(qaTrimestreProm),
         rango: rangoQa(qaTrimestreProm),
