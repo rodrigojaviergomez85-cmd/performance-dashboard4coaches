@@ -552,6 +552,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           fc_do_pct: pct(fila["fc do%"]),
           clv: numero(fila["clv"]),
           category: categoria,
+          clases: (fila["__clases"] as unknown) ?? null,
         },
       };
     },

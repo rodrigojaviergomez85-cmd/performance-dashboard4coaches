@@ -233,13 +233,38 @@ export async function leerHojaRetencion(archivo: File): Promise<Record<string, u
   const nombres = XLSX.read(datos, { type: "array", bookSheets: true }).SheetNames;
   const nombre = nombres.find((n) => claveEncabezado(n) === "coach gral");
   if (!nombre) return leerHoja(archivo, ["ID COACH", "Active Student", "RETENTION", "CLV"]);
-  const libro = XLSX.read(datos, { type: "array", sheets: [nombre] });
+  const nombreClases = nombres.find((n) => claveEncabezado(n) === "xcoaches");
+  const libro = XLSX.read(datos, { type: "array", sheets: nombreClases ? [nombre, nombreClases] : [nombre] });
   const hoja = libro.Sheets[nombre]!;
+  const clases = nombreClases ? clasesPorCoach(filasNormalizadas(libro.Sheets[nombreClases]!)) : new Map();
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: null }).map((fila) => {
     const salida: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fila)) salida[claveEncabezado(k)] = v;
+    const id = Number(salida["id coach"]);
+    salida["__clases"] = Number.isFinite(id) ? (clases.get(id) ?? null) : null;
     return salida;
   });
+}
+
+export type ClaseRetencion = { horario: string; activos: number; do: number };
+
+/** Hoja XCOACHES: suma activos promedio y DO por coach + horario (varios niveles por horario). */
+export function clasesPorCoach(filas: Record<string, unknown>[]): Map<number, ClaseRetencion[]> {
+  const mapa = new Map<number, Map<string, ClaseRetencion>>();
+  for (const f of filas) {
+    const id = Number(f["idcoach"]);
+    const horario = String(f["horario"] ?? "").trim();
+    if (!Number.isFinite(id) || id <= 0 || !horario) continue;
+    const activos = Number(f["suma de prom act"]) || 0;
+    const dos = Number(f["suma de cuenta do"]) || 0;
+    const porHorario = mapa.get(id) ?? new Map<string, ClaseRetencion>();
+    const c = porHorario.get(horario) ?? { horario, activos: 0, do: 0 };
+    c.activos += activos;
+    c.do += dos;
+    porHorario.set(horario, c);
+    mapa.set(id, porHorario);
+  }
+  return new Map([...mapa].map(([id, m]) => [id, [...m.values()]]));
 }
 
 const MESES_NOMBRE: [RegExp, number][] = [

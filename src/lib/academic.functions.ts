@@ -151,7 +151,7 @@ const TABLAS = {
     clave: ["coach_id", "period_month"],
     columnas: [
       "period_month", "coach_id", "coach", "country", "sucursal", "do_count", "active_students",
-      "do_pct", "retention_pct", "fc_do", "fc_do_pct", "clv", "category",
+      "do_pct", "retention_pct", "fc_do", "fc_do_pct", "clv", "category", "clases",
     ],
   },
 } as const;
@@ -252,6 +252,11 @@ const ESQUEMAS = {
     fc_do: z.number().nullable(),
     fc_do_pct: z.number().nullable(),
     clv: z.number().nullable(),
+    clases: z
+      .array(z.object({ horario: z.string().max(100), activos: z.number(), do: z.number() }))
+      .max(200)
+      .nullable()
+      .optional(),
   }).catchall(txt),
 } as const;
 
