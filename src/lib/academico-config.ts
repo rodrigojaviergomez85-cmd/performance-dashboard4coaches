@@ -163,6 +163,8 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     applicable: false,
     requiereMes: true,
     reemplazarRango: true,
+    // Solo la hoja RAW tiene estas columnas; se ignoran pivots y hojas por país.
+    encabezadosRequeridos: ["IDCOACH", "CSAT COACH SCORE", "Submitted At"],
     columnas: [
       { clave: "period_month", etiqueta: "Mes" },
       { clave: "submitted_at", etiqueta: "Submitted At" },
