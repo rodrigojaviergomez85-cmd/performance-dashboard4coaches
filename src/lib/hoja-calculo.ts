@@ -370,3 +370,41 @@ export async function leerHojasHires(archivo: File): Promise<Record<string, unkn
   }
   return salida;
 }
+
+const QA_DATA_ENCABEZADOS = ["ORIGEN", "ID COACH", "NOTA FINAL", "QA | Fecha Ingresado"];
+const QA_ANTIGUO_ENCABEZADOS = ["CLAVE", "Id Coach", "Nota Final", "Fecha Monitoreo", "Type QA"];
+
+/**
+ * QA: lee la hoja "QA DATA" (formato nuevo, columnas "QA | ...") o, si no existe,
+ * la hoja del formato anterior. Devuelve filas con los nombres del formato anterior.
+ */
+export async function leerHojaQa(archivo: File): Promise<Record<string, unknown>[]> {
+  let filas: Record<string, unknown>[];
+  try {
+    filas = await leerHoja(archivo, QA_DATA_ENCABEZADOS);
+  } catch {
+    return leerHoja(archivo, QA_ANTIGUO_ENCABEZADOS);
+  }
+  return filas.map(normalizarFilaQaData);
+}
+
+/** Convierte una fila de QA DATA al formato anterior (pura, para pruebas). */
+export function normalizarFilaQaData(fila: Record<string, unknown>): Record<string, unknown> {
+  const salida: Record<string, unknown> = { ...fila };
+  for (const [k, v] of Object.entries(fila)) {
+    if (!k.startsWith("qa | ")) continue;
+    const base = k.slice(5);
+    if (texto(salida[base]) === null) salida[base] = v;
+  }
+  salida["semana"] ??= fila["semana"];
+  if (texto(salida["week"]) === null) salida["week"] = fila["semana"];
+  if (texto(salida["clave"]) === null) salida["clave"] = fila["ver quality"] ?? fila["qa | ver quality"];
+  if (texto(salida["comentario"]) === null) salida["comentario"] = fila["qa | comentarios"];
+  if (texto(salida["evaluating time"]) === null) salida["evaluating time"] = fila["evaluating time (h)"];
+  // Fechas "dd/mm/aaaa hh:mm": se conserva solo el día.
+  for (const campo of ["fecha ingresado", "fecha monitoreo"]) {
+    const t = texto(salida[campo]);
+    if (t && /^\d{1,2}[/-]\d{1,2}[/-]\d{4}\s/.test(t)) salida[campo] = t.split(/\s+/)[0];
+  }
+  return salida;
+}

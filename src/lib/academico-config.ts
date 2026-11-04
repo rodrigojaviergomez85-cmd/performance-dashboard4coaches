@@ -1,4 +1,4 @@
-import { entero, fecha, fechaDiaMes, invalido, leerHojaRetencion, leerHojasHires, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
+import { entero, fecha, fechaDiaMes, invalido, leerHojaQa, leerHojaRetencion, leerHojasHires, leerHojasIncidencias, normalizarHorario, numero, texto } from "@/lib/hoja-calculo";
 import { categoriaRetencion, cuentaIncidencia, esHire2m, idCoachBase, type OrigenIncidencia } from "@/lib/reglas";
 
 /** Escalas observadas en los archivos reales: QA y CSAT van de 0 a 10. */
@@ -76,6 +76,7 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
     applicable: true,
     reemplazarRango: true,
     encabezadosRequeridos: ["CLAVE", "Id Coach", "Nota Final", "Fecha Monitoreo", "Type QA"],
+    leer: leerHojaQa,
     columnas: [
       { clave: "fecha_monitoreo", etiqueta: "Fecha Monitoreo" },
       { clave: "month", etiqueta: "Month" },
