@@ -74,16 +74,14 @@ function formatoMes(mes: string) {
 function MejoraContinua() {
   const { perfil } = Route.useRouteContext();
   const esAdmin = perfil.rol === "admin";
-  const [mes, setMes] = useState(mesActual());
   const [tipo, setTipo] = useState("todos");
 
   const consulta = useQuery({
-    queryKey: ["mejora", mes],
+    queryKey: ["mejora"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("materiales_mejora")
         .select("*")
-        .eq("mes", `${mes}-01`)
         .order("creado", { ascending: false })
         .order("id", { ascending: true });
       if (error) throw error;
@@ -101,14 +99,10 @@ function MejoraContinua() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Mejora Continua</h1>
-          <p className="text-sm text-muted-foreground">Materiales del mes: lecturas, imágenes y videos.</p>
+          <p className="text-sm text-muted-foreground">Todos los materiales: lecturas, imágenes y videos.</p>
         </div>
         <div className="flex items-end gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="mes">Mes</Label>
-            <Input id="mes" type="month" value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
-          </div>
-          {esAdmin && <DialogoSubir mesInicial={mes} />}
+          {esAdmin && <DialogoSubir mesInicial={mesActual()} />}
         </div>
       </div>
 
@@ -131,11 +125,11 @@ function MejoraContinua() {
         </p>
       ) : lista.length === 0 && (consulta.data ?? []).length > 0 ? (
         <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-          No hay materiales de este tipo en {formatoMes(mes)}.
+          No hay materiales de este tipo.
         </p>
       ) : lista.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-          No hay materiales para {formatoMes(mes)}.
+          Todavía no hay materiales.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
