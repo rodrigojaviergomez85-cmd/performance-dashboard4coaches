@@ -147,7 +147,8 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           gerente2: texto(primera(fila, ["gerente2", "gerente.1", "gerente_1"])),
           nota_suc: notaSuc,
           feedback_type: texto(fila["feedback type"]),
-          comentario: texto(fila["comentario"]),
+          // Comentario solo informativo: se recorta para no exceder el límite de texto.
+          comentario: texto(fila["comentario"])?.slice(0, 4000) ?? null,
           applicable: 1,
         },
       };
