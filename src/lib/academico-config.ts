@@ -234,10 +234,9 @@ export const CONFIGS: Record<ClaveTabla, ConfigPestana> = {
           instalaciones_score: numero(fila["csat instalaciones score"]),
           instalaciones_comment: texto(fila["instalaciones comment"]),
           experiencia_score: numero(porFragmento(fila, "como dirias que fue tu experiencia")),
-          // Siempre la columna O (razón de la nota del curso); se ignora la repetida de Fluency App.
-          experiencia_comment: texto(
-            fila["👉 cuentanos la razon de tu nota."] ?? porFragmento(fila, "cuentanos la razon de tu nota"),
-          ),
+          // Encabezados repetidos conservan la primera columna (O, razón de la nota del curso),
+          // así se ignora la columna de Fluency App que repite el mismo título.
+          experiencia_comment: texto(porFragmento(fila, "cuentanos la razon de tu nota")),
           token: texto(fila["token"]),
           trainee_name: texto(fila["trainee name"]),
           idcontrol: entero(fila["idcontrol"]),
