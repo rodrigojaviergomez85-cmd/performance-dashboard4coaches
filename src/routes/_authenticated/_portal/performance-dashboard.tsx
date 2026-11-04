@@ -342,7 +342,7 @@ function PerformanceDashboard() {
               opciones={coaches.map((coach) => ({ valor: String(coach.coach_id), etiqueta: coach.nombre }))}
               valor={coachId === null ? "" : String(coachId)}
               alElegir={(valor) => setCoachId(valor ? Number(valor) : null)}
-              marcador={data.coach.nombre}
+              marcador={coachId === null ? "Search Coach..." : data.coach.nombre}
             />
           ) : (
             <div className="rounded-full border border-border bg-card px-5 py-2 text-xs font-semibold uppercase text-foreground">

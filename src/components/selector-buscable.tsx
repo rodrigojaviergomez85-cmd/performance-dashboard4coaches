@@ -44,7 +44,7 @@ export function SelectorBuscable({ opciones, valor, alElegir, marcador, classNam
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="end">
         <Command>
-          <CommandInput placeholder="Buscar coach" className="h-9" />
+          <CommandInput placeholder="Search Coach..." className="h-9" />
           <CommandList>
             <CommandEmpty>Sin resultados.</CommandEmpty>
             <CommandGroup>

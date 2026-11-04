@@ -35,10 +35,9 @@ export function BarraLateral({ nombre, rol }: { nombre: string; rol: string }) {
             className="h-9 w-9 shrink-0 object-contain"
           />
           <p className="text-sm font-semibold tracking-tight text-foreground">
-            Portal de Coaches E4CC
+            Coach Performance Dashboard
           </p>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">{nombre}</p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">
