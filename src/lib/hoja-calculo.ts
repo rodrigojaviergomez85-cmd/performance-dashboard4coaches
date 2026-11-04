@@ -54,7 +54,11 @@ export async function leerHoja(
 
   return crudas.map((fila) => {
     const salida: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(fila)) salida[claveEncabezado(k)] = v;
+    // Si dos columnas normalizan al mismo encabezado, gana la primera (más a la izquierda).
+    for (const [k, v] of Object.entries(fila)) {
+      const clave = claveEncabezado(k);
+      if (!(clave in salida)) salida[clave] = v;
+    }
     return salida;
   });
 }
