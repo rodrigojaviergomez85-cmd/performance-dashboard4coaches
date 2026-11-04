@@ -186,7 +186,7 @@ function TarjetaMaterial({ material, esAdmin }: { material: Material; esAdmin: b
       <div className="flex flex-1 flex-col gap-2 p-4">
         <p className="font-medium text-foreground">{material.titulo}</p>
         {material.descripcion && <p className="text-sm text-muted-foreground">{material.descripcion}</p>}
-        <p className="text-xs text-muted-foreground">{material.nombre_archivo}</p>
+        <p className="text-xs text-muted-foreground">{material.nombre_archivo} · {formatoMes(material.mes.slice(0, 7))}</p>
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
           {material.tipo === "pdf" && url.data && (
             <Dialog open={abierto} onOpenChange={setAbierto}>
